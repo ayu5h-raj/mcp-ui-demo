@@ -327,6 +327,51 @@ const moveSchema = {
   col: z.number().int().min(0).max(2).describe('Column (0-2). 0=left, 2=right.'),
 };
 
+// Ask Claude (via MCP sampling) to pick the next O move. Returns null if
+// sampling is unavailable / declined / produces an invalid response. Caller
+// falls back to the prompt-intent path in the iframe.
+async function sampleClaudeMove(
+  server: McpServer,
+  game: GameState,
+): Promise<{ row: number; col: number } | null> {
+  const boardStr = game.board.map((row) => row.map((c) => c || '.').join(' ')).join('\n');
+  const empties: string[] = [];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) if (!game.board[r][c]) empties.push(`(${r},${c})`);
+
+  try {
+    const result = await server.server.createMessage({
+      systemPrompt:
+        'You are a tic-tac-toe AI playing as O. Reply with ONLY two digits separated by a comma — row,col (each 0-2). No other text.',
+      maxTokens: 20,
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `Current board (X is human, O is you):
+${boardStr}
+Empty cells: ${empties.join(', ')}
+Pick the strongest move. Block opponent wins; prefer center, then corners. Reply with row,col only.`,
+          },
+        },
+      ],
+    });
+
+    const text = result.content && result.content.type === 'text' ? result.content.text : '';
+    const m = text.match(/(\d)\s*[,\s]\s*(\d)/);
+    if (!m) return null;
+    const row = parseInt(m[1], 10);
+    const col = parseInt(m[2], 10);
+    if (row < 0 || row > 2 || col < 0 || col > 2) return null;
+    if (game.board[row][col] !== null) return null;
+    return { row, col };
+  } catch (err) {
+    // Host doesn't support sampling, declined, or some other error.
+    console.error('sampling unavailable:', err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 async function buildServer(): Promise<McpServer> {
   const server = new McpServer({ name: 'mcp-ui-demo-game', version: '0.1.0' });
   let game: GameState = newGame();
@@ -380,16 +425,33 @@ async function buildServer(): Promise<McpServer> {
           }],
         };
       }
-      const player = game.turn;
-      game.board[row][col] = player;
-      game.history.push({ player, row, col });
+      const justPlayed = game.turn;
+      game.board[row][col] = justPlayed;
+      game.history.push({ player: justPlayed, row, col });
       game.moveCount++;
       const w = checkWinner(game.board);
       if (w) {
         game.winner = w;
       } else {
-        game.turn = player === 'X' ? 'O' : 'X';
+        game.turn = justPlayed === 'X' ? 'O' : 'X';
       }
+
+      // If the human just played and it's now Claude's turn, try MCP sampling
+      // to get Claude's move synchronously. On success, apply it within the
+      // same response — iframe sees both moves at once, no polling needed.
+      // On failure, leave turn=O so the iframe falls back to its prompt+poll path.
+      if (justPlayed === 'X' && game.winner === null && game.turn === 'O') {
+        const claudeMove = await sampleClaudeMove(server, game);
+        if (claudeMove) {
+          game.board[claudeMove.row][claudeMove.col] = 'O';
+          game.history.push({ player: 'O', row: claudeMove.row, col: claudeMove.col });
+          game.moveCount++;
+          const w2 = checkWinner(game.board);
+          if (w2) game.winner = w2;
+          else game.turn = 'X';
+        }
+      }
+
       return { content: [{ type: 'text', text: JSON.stringify({ game }) }] };
     },
   );
