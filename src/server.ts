@@ -151,6 +151,7 @@ function buildOrderFormHTML(r: Restaurant): string {
   const ackEl = document.getElementById('ack');
   const submitEl = document.getElementById('submit');
   const RESTAURANT_ID = ${JSON.stringify(r.id)};
+  const RESTAURANT_NAME = ${JSON.stringify(r.name)};
 
   function recalc() {
     let total = 0, count = 0;
@@ -165,6 +166,16 @@ function buildOrderFormHTML(r: Restaurant): string {
       .filter((i) => i.checked)
       .map((i) => ({ name: i.value, price: parseFloat(i.dataset.price) }));
     const total = selected.reduce((s, it) => s + it.price, 0);
+    const itemList = selected.map((it) => it.name + ' ($' + it.price.toFixed(2) + ')').join(', ');
+    const summary = 'I just placed an order at ' + RESTAURANT_NAME + ' (' + RESTAURANT_ID + '): ' + itemList + '. Total: $' + total.toFixed(2) + '. Acknowledge the order and suggest a drink pairing.';
+
+    // Standard MCP-UI host-recognized intent: 'prompt' = send the text to the LLM as a follow-up message.
+    window.parent.postMessage({
+      type: 'intent',
+      payload: { intent: 'prompt', params: { prompt: summary } },
+    }, '*');
+
+    // Also emit the structured event for hosts (e.g. ui-inspector) that log raw messages.
     window.parent.postMessage({
       type: 'intent',
       payload: {
@@ -174,6 +185,7 @@ function buildOrderFormHTML(r: Restaurant): string {
         total: Number(total.toFixed(2)),
       },
     }, '*');
+
     ackEl.classList.add('show');
     submitEl.disabled = true;
     submitEl.textContent = 'Order Placed ✓';
