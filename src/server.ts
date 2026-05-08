@@ -83,12 +83,35 @@ type CartLine = { restaurantId: Restaurant['id']; name: string; price: number; e
 // MCP Apps `ui-lifecycle-iframe-render-data` event (toolInput + toolOutput).
 // ───────────────────────────────────────────────────────────────────────────
 
-// Common preamble that wires the render-data lifecycle. Templates compose this
-// with their own DOM + applyData(data) function.
+// Common preamble that wires the render-data lifecycle plus auto-resize.
+// Templates compose this with their own DOM + applyData(data) function.
 const RENDER_LIFECYCLE_JS = `
   function announceReady() {
     window.parent.postMessage({ type: 'ui-lifecycle-iframe-ready' }, '*');
   }
+
+  // Report content size to the host so the iframe doesn't get scrollbars.
+  // The mcpApps adapter translates ui-size-change → ui/notifications/size-changed.
+  let lastReported = { w: 0, h: 0 };
+  function reportSize() {
+    const h = Math.max(
+      document.body ? document.body.scrollHeight : 0,
+      document.documentElement ? document.documentElement.scrollHeight : 0,
+    );
+    const w = Math.max(
+      document.body ? document.body.scrollWidth : 0,
+      document.documentElement ? document.documentElement.scrollWidth : 0,
+    );
+    if (w === lastReported.w && h === lastReported.h) return;
+    lastReported = { w, h };
+    window.parent.postMessage({ type: 'ui-size-change', payload: { width: w, height: h } }, '*');
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(() => reportSize());
+    if (document.body) ro.observe(document.body);
+    if (document.documentElement) ro.observe(document.documentElement);
+  }
+
   let receivedData = false;
   window.addEventListener('message', (event) => {
     const d = event.data;
@@ -99,12 +122,16 @@ const RENDER_LIFECYCLE_JS = `
     try {
       applyData(JSON.parse(out.content[0].text));
       receivedData = true;
+      // applyData populated the DOM; report new size on the next frame.
+      requestAnimationFrame(reportSize);
     } catch (err) {
       console.error('parse error', err);
     }
   });
-  // Send ready immediately. The host may have queued data already.
+
+  // Send ready and an initial size report (before data arrives).
   announceReady();
+  requestAnimationFrame(reportSize);
 `;
 
 const RESTAURANT_CARD_TEMPLATE = `<!doctype html>
