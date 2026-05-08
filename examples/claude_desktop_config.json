@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "mcp-ui-demo": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "tsx",
+        "/ABSOLUTE/PATH/TO/mcp-ui-demo/src/server.ts"
+      ],
+      "env": {
+        "MCP_TRANSPORT": "stdio"
+      }
+    }
+  }
+}
