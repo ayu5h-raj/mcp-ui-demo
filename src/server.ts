@@ -265,12 +265,15 @@ const GAME_TEMPLATE = `<!doctype html>
   }
 
   function promptClaude() {
-    const boardStr = state.board.map(row => row.map(c => c || '.').join(' ')).join('\\n');
-    const empties = [];
-    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) if (!state.board[r][c]) empties.push('(' + r + ',' + c + ')');
-    const prompt = "It's your turn in tic-tac-toe (you are O, opponent is X). Current board:\\n" +
-      boardStr + "\\nEmpty cells: " + empties.join(', ') +
-      ". Pick a strategic move and call the make_move tool with row and col (each 0-2). Block opponent wins; take the center or corners early.";
+    // Short prompt — strategy + flow live in the make_move tool description so
+    // we don't bake state into the chat. Scales to chess where the board can't
+    // fit in a prompt anyway. Claude pulls state via get_game_state on its turn.
+    const prompt = "It's your turn in tic-tac-toe — make your move.";
+    const messageId = 'prompt-' + Date.now();
+    // Send both formats; whichever the host honors will fire (different hosts
+    // use different protocols — some auto-submit 'prompt' type, others draft
+    // 'intent' wrapped prompts).
+    window.parent.postMessage({ type: 'prompt', messageId, payload: { prompt } }, '*');
     window.parent.postMessage({ type: 'intent', payload: { intent: 'prompt', params: { prompt } } }, '*');
   }
 
@@ -394,7 +397,7 @@ async function buildServer(): Promise<McpServer> {
     'play_tic_tac_toe',
     {
       description:
-        'Show the tic-tac-toe board. The user is X (goes first), you (Claude) are O. Use this when the user wants to play a game. The board UI handles human turns directly via Pattern B; you make moves by calling the make_move tool when prompted.',
+        'Show the tic-tac-toe board. The user is X (goes first), you (Claude) are O. Use this when the user wants to play. The board UI handles the human\'s clicks directly. When the user finishes a turn, you will be prompted briefly ("It\'s your turn"); on that prompt, follow the make_move tool description to play.',
       inputSchema: {},
       _meta: { ui: { resourceUri: gameUI.resource.uri } },
     },
@@ -409,7 +412,13 @@ async function buildServer(): Promise<McpServer> {
     {
       title: 'Make a Move',
       description:
-        'Place a mark on the tic-tac-toe board. The server picks the player based on whose turn it is — X (human) or O (Claude). When you (Claude) are prompted to play, call this with your chosen row and col.',
+        `Place a mark on the tic-tac-toe board. The server picks the player from whose turn it is — X (human) or O (Claude). When it is your turn (O), follow this playbook:
+
+  1. Call \`get_game_state\` first to see the current board (don't trust the prompt or memory — always fetch fresh state).
+  2. Pick the strongest move using simple strategy: (a) win if you can, (b) block opponent's winning move, (c) prefer the center, then corners, then edges.
+  3. Call this tool with that row and col (each 0-2).
+
+If you call this tool with an invalid move (cell taken or out of bounds), the response will list the empty cells — re-pick from those.`,
       inputSchema: moveSchema,
     },
     async ({ row, col }) => {
@@ -456,13 +465,13 @@ async function buildServer(): Promise<McpServer> {
     },
   );
 
-  // ── get_game_state (iframe polls this; Claude can also use it) ──
+  // ── get_game_state (iframe polls this; Claude calls it on every turn) ──
   server.registerTool(
     'get_game_state',
     {
       title: 'Get Game State',
       description:
-        'Return the current tic-tac-toe board state. Used by the iframe to poll for Claude\'s move. Claude can also call this to refresh its view.',
+        'Return the current tic-tac-toe board, whose turn is next, and the move history. Call this on your turn (as O) BEFORE choosing a move with make_move. The board is a 3x3 array where null = empty, "X" = human, "O" = you. Includes winner if any.',
       inputSchema: {},
     },
     async () => ({ content: [{ type: 'text', text: JSON.stringify({ game }) }] }),
