@@ -1,26 +1,36 @@
-# mcp-ui-demo
+# mcp-ui-demo (experiment-game branch)
 
-A minimal demo of [MCP-UI](https://mcpui.dev/): one TypeScript MCP server, six tools, three rendering modes plus **Pattern B** (iframe → server tool call with no LLM round-trip), inside a sandboxed iframe in the host (Claude Desktop, ui-inspector, etc.).
+> **You are on the `experiment-game` branch.** The food/Swiggy demo lives on `main`. This branch replaces it with **Tic-Tac-Toe vs. Claude** — a small playable game running entirely inside Claude Desktop, where Claude itself is your opponent.
 
-## What you get
+## What it is
 
-| Tool | Kind | What it shows |
+A single MCP server with four tools that, together, make Claude an actual player:
+
+| Tool | Kind | Purpose |
 |---|---|---|
-| `show_restaurant_card` | UI: `rawHtml` | A styled restaurant card with rating / ETA / price — pure inline-CSS HTML rendered in a sandboxed iframe. |
-| `show_menu_page` | UI: `externalUrl` | The cuisine's Wikipedia page embedded as an iframe — host loads any URL you hand it. |
-| `show_order_form` | UI: `rawHtml` + Pattern B | Interactive order form. Clicking "Add to Cart" calls the `add_to_cart` tool **directly** via the MCP Apps adapter — no LLM round-trip. Server cart state updates live. |
-| `view_cart` | UI: `rawHtml` | Renders the current shopping cart (items grouped by restaurant + total) as a styled UI. |
-| `add_to_cart` | data | Appends items to the session cart. Called from the order-form iframe (Pattern B) or directly by Claude. |
-| `clear_cart` | data | Empties the session cart. |
+| `play_tic_tac_toe` | UI tool | Render the game board (a fixed `_meta.ui.resourceUri` template). |
+| `make_move(row, col)` | data | Place a mark. Server resolves player from `game.turn` — same tool for human (called from iframe via Pattern B) and Claude (called by the LLM after a `prompt` intent). |
+| `get_game_state()` | data | Return current board state. The iframe polls this while waiting for Claude's move. |
+| `reset_game()` | data | Start fresh. |
 
-All UI tools that take a restaurant accept `restaurantId` ∈ `{r1, r2, r3}` — Pizza Paradiso, Sushi Zen, Curry House (Swiggy-themed warm-up for Phase 2).
+You play **X** (you go first). Claude plays **O**.
 
-## Pattern A vs Pattern B
+## How a turn works
 
-- **Pattern A** (Claude in the loop): UI posts a `prompt` intent → host forwards as a follow-up user turn → Claude reads it and decides what to call. Slow, token-expensive, but flexible.
-- **Pattern B** (direct tool call): UI sends `{type: 'tool', payload: {toolName, params}}` → host routes to the MCP server directly → server returns result to the iframe. Fast, deterministic, free. **This is what production apps (Excalidraw, Swiggy widgets) use.**
+```
+You click a cell
+  ─► iframe Pattern B: make_move(row, col)         server marks X, flips turn to O
+  ─► iframe re-renders with X
+  ─► iframe shows "Claude is thinking..."
+  ─► iframe Pattern A: prompt "Your turn — board is …, call make_move"
+  ─► Claude reads, picks a move, calls make_move(r, c)  server marks O, flips turn to X
+  ─► (meanwhile) iframe polls get_game_state every 700ms→3s with backoff
+  ─► poll detects turn flipped back to X
+  ─► iframe re-renders with Claude's O
+  ─► UI: "Your turn"
+```
 
-This demo wires `show_order_form` for Pattern B end-to-end. Click "Add to Cart" → cart state updates server-side → ask Claude "what's in my cart?" and it calls `view_cart` to read the same state back.
+If Claude takes too long (timeout 45s), or makes an invalid move and gives up, you can hit **Nudge Claude** in the form to re-issue the prompt, or **New Game** to start over.
 
 ## Quickstart
 
@@ -29,62 +39,38 @@ pnpm install
 pnpm dev          # MCP server on http://localhost:3000/mcp (Streamable HTTP)
 ```
 
-That's it on the server side. Now point a viewer at it.
+To play in Claude Desktop:
 
-### Option A — view in `ui-inspector` (recommended for dev)
-
-```bash
-# in another directory, once:
-git clone https://github.com/idosal/ui-inspector
-cd ui-inspector
-pnpm install
-pnpm dev
-```
-
-Open the inspector URL it prints, set:
-- **Transport Type**: `Streamable HTTP`
-- **URL**: `http://localhost:3000/mcp`
-
-Click **Connect** → three tools appear in the left pane → click each one → rendered UI shows in the right pane. Click "Place Order" in `show_order_form` and watch the intent appear in the inspector's message log.
-
-### Option B — view in Claude Desktop
-
-1. Edit `~/Library/Application Support/Claude/claude_desktop_config.json` and merge in the snippet from [`examples/claude_desktop_config.json`](examples/claude_desktop_config.json), substituting `/ABSOLUTE/PATH/TO/mcp-ui-demo` with the real path to this folder.
+1. Add (or update) `~/Library/Application Support/Claude/claude_desktop_config.json` with the snippet from [`examples/claude_desktop_config.json`](examples/claude_desktop_config.json), substituting `/ABSOLUTE/PATH/TO/...`.
 2. Restart Claude Desktop.
-3. Open a new chat and ask: **"Show me the restaurant card for r1"** — Claude calls `show_restaurant_card` and the card renders inline in chat.
-4. Try **"Show me the order form for r2"** — pick items, click **Place Order**, the intent surfaces back as a tool message Claude can react to.
+3. Say: **"Let's play tic-tac-toe"** — Claude calls `play_tic_tac_toe`, the board renders, you click a cell, Claude responds.
 
-The Claude Desktop config uses stdio transport — the server is the same code, just launched with `MCP_TRANSPORT=stdio`.
+You can verify the demo works in `ui-inspector` too (Streamable HTTP, `http://localhost:3000/mcp`), but Pattern A (Claude responding to prompts) only fires in real LLM hosts, so the inspector will show "Claude is thinking…" indefinitely.
 
-## How it works
+## What this demo proves
+
+Compared to the food/Swiggy demo on `main`, this one adds:
+
+- **LLM as a game opponent** — not just the orchestrator. Claude reads a board state, reasons about strategy, and calls a tool with its move.
+- **Bidirectional state polling** — iframe doesn't just push and forget; it polls `get_game_state` until Claude's move appears.
+- **Mixed Pattern A + Pattern B in one flow** — human's clicks go via Pattern B (no LLM), Claude's moves come back via Pattern A (LLM in the loop). Same `make_move` tool serves both.
+
+## Files
 
 ```
-src/server.ts          ← everything: server bootstrap + 3 tools + mock data
-docs/superpowers/specs/ ← design spec
+src/server.ts          ← everything: game state + 4 tools + UI template + lifecycle JS
+docs/how-it-works.md   ← architecture (still mostly applies — substitute "cart" → "game")
 examples/              ← Claude Desktop config snippet
 ```
 
-The server is a single `~270`-line TypeScript file:
+## Going back to the food demo
 
-1. Mock restaurant data inline at the top.
-2. Two HTML builders (`buildRestaurantCardHTML`, `buildOrderFormHTML`) that produce inline-styled HTML strings.
-3. `buildServer()` registers the three tools — each one calls `createUIResource(...)` from [`@mcp-ui/server`](https://www.npmjs.com/package/@mcp-ui/server) and returns it as the tool's `content`.
-4. Bootstrap branches on `MCP_TRANSPORT`: stdio for Claude Desktop, Streamable HTTP for ui-inspector / web hosts.
+```bash
+git checkout main
+```
 
-## Notes
+## Possible follow-ups
 
-- The `externalUrl` tool fetches the URL server-side at tool-call time (the SDK injects a `<base>` tag for relative-path resolution), so the demo machine needs network access for tool 2 to work.
-- Wikipedia is used because most public sites set `X-Frame-Options: DENY` and refuse to be iframed. Wikipedia doesn't. Swap the URLs in `restaurants[…].cuisineWikiUrl` to anything that allows iframing.
-- This is a demo — no auth, no persistence, no error handling beyond what the SDK / framework gives for free.
-
-## How it works
-
-See [`docs/how-it-works.md`](docs/how-it-works.md) — end-to-end mental model with ASCII flow diagrams: startup, Pattern A (LLM in the loop), Pattern B (no LLM round-trip on iframe interaction), state reads, and auto-resize.
-
-## Design spec
-
-See [`docs/superpowers/specs/2026-05-09-mcp-ui-demo-design.md`](docs/superpowers/specs/2026-05-09-mcp-ui-demo-design.md) for the design rationale, scope decisions, and what was deliberately left out.
-
-## License
-
-MIT (or whatever you prefer — this is demo code).
+- **Connect 4 / Othello** — same skeleton, just a bigger board. Server-side legal-move check stays simple.
+- **Word games** — Claude generates a target word, the iframe is a Wordle-style guess grid; clicks call `submit_guess` and color the row.
+- **Choose-your-own-adventure** — `start_adventure(theme)` returns a UI with intro + choices; clicking a choice fires `make_choice(choiceId)` which prompts Claude to write the next scene.
