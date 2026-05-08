@@ -77,6 +77,10 @@ The server is a single `~270`-line TypeScript file:
 - Wikipedia is used because most public sites set `X-Frame-Options: DENY` and refuse to be iframed. Wikipedia doesn't. Swap the URLs in `restaurants[…].cuisineWikiUrl` to anything that allows iframing.
 - This is a demo — no auth, no persistence, no error handling beyond what the SDK / framework gives for free.
 
+## How it works
+
+See [`docs/how-it-works.md`](docs/how-it-works.md) — end-to-end mental model with ASCII flow diagrams: startup, Pattern A (LLM in the loop), Pattern B (no LLM round-trip on iframe interaction), state reads, and auto-resize.
+
 ## Design spec
 
 See [`docs/superpowers/specs/2026-05-09-mcp-ui-demo-design.md`](docs/superpowers/specs/2026-05-09-mcp-ui-demo-design.md) for the design rationale, scope decisions, and what was deliberately left out.
