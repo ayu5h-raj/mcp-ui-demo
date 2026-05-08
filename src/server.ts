@@ -4,51 +4,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { createUIResource } from '@mcp-ui/server';
+import { registerAppTool, registerAppResource } from '@modelcontextprotocol/ext-apps/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-
-// We deliberately avoid @mcp-ui/server's createUIResource here because v6 hard-codes
-// mimeType to 'text/html;profile=mcp-app', which Claude Desktop treats as data unless
-// it's registered as a proper MCP App via registerAppTool/registerAppResource. For a
-// minimal demo we hand-roll the UIResource with the legacy 'text/html' mime — Claude
-// Desktop and ui-inspector both render it as an iframe out of the box.
-type UIResource = {
-  type: 'resource';
-  resource: {
-    uri: `ui://${string}`;
-    mimeType: 'text/html' | 'text/uri-list';
-    text: string;
-    _meta?: Record<string, unknown>;
-  };
-};
-
-function rawHtmlResource(uri: `ui://${string}`, htmlString: string, framePx?: [string, string]): UIResource {
-  return {
-    type: 'resource',
-    resource: {
-      uri,
-      mimeType: 'text/html',
-      text: htmlString,
-      ...(framePx
-        ? { _meta: { 'mcpui.dev/ui-preferred-frame-size': framePx } }
-        : {}),
-    },
-  };
-}
-
-function externalUrlResource(uri: `ui://${string}`, iframeUrl: string, framePx?: [string, string]): UIResource {
-  return {
-    type: 'resource',
-    resource: {
-      uri,
-      mimeType: 'text/uri-list',
-      text: iframeUrl,
-      ...(framePx
-        ? { _meta: { 'mcpui.dev/ui-preferred-frame-size': framePx } }
-        : {}),
-    },
-  };
-}
 
 // ───────────────────────────────────────────────────────────────────────────
 // Mock data — three restaurants, four items each.
@@ -120,15 +79,39 @@ const restaurants: Record<Restaurant['id'], Restaurant> = {
 type CartLine = { restaurantId: Restaurant['id']; name: string; price: number; emoji: string };
 
 // ───────────────────────────────────────────────────────────────────────────
-// HTML builders
+// Generic UI templates — registered ONCE per server, data flows in via the
+// MCP Apps `ui-lifecycle-iframe-render-data` event (toolInput + toolOutput).
 // ───────────────────────────────────────────────────────────────────────────
 
-function buildRestaurantCardHTML(r: Restaurant): string {
-  return `<!doctype html>
+// Common preamble that wires the render-data lifecycle. Templates compose this
+// with their own DOM + applyData(data) function.
+const RENDER_LIFECYCLE_JS = `
+  function announceReady() {
+    window.parent.postMessage({ type: 'ui-lifecycle-iframe-ready' }, '*');
+  }
+  let receivedData = false;
+  window.addEventListener('message', (event) => {
+    const d = event.data;
+    if (!d || !d.type) return;
+    if (d.type !== 'ui-lifecycle-iframe-render-data') return;
+    const out = d.payload && d.payload.renderData && d.payload.renderData.toolOutput;
+    if (!out || !out.content || !out.content[0] || !out.content[0].text) return;
+    try {
+      applyData(JSON.parse(out.content[0].text));
+      receivedData = true;
+    } catch (err) {
+      console.error('parse error', err);
+    }
+  });
+  // Send ready immediately. The host may have queued data already.
+  announceReady();
+`;
+
+const RESTAURANT_CARD_TEMPLATE = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><style>
   body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f7f7f7; padding: 20px; }
   .card { max-width: 360px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
-  .hero { height: 140px; background: linear-gradient(135deg, ${r.gradient[0]} 0%, ${r.gradient[1]} 100%); display: flex; align-items: center; justify-content: center; font-size: 56px; }
+  .hero { height: 140px; display: flex; align-items: center; justify-content: center; font-size: 56px; background: #ddd; }
   .body { padding: 16px 18px 20px; }
   .name { font-size: 20px; font-weight: 700; color: #1f1f1f; margin: 0 0 4px 0; }
   .cuisine { color: #777; font-size: 14px; margin: 0 0 14px 0; }
@@ -137,34 +120,36 @@ function buildRestaurantCardHTML(r: Restaurant): string {
   .rating { background: #e8f7ee; color: #2e7d32; }
   .eta { background: #fff4e5; color: #b76f00; }
   .price { background: #f0f0ff; color: #4339a8; }
+  .skeleton .name, .skeleton .cuisine, .skeleton .meta { opacity: 0.3; }
 </style></head><body>
-  <div class="card">
-    <div class="hero">${r.items[0].emoji}</div>
+  <div class="card skeleton" id="card">
+    <div class="hero" id="hero">⏳</div>
     <div class="body">
-      <h1 class="name">${escapeHtml(r.name)}</h1>
-      <p class="cuisine">${escapeHtml(r.cuisine)} cuisine</p>
-      <div class="meta">
-        <span class="pill rating">★ ${r.rating}</span>
-        <span class="pill eta">⏱ ${r.etaMin} min</span>
-        <span class="pill price">${r.priceRange}</span>
-      </div>
+      <h1 class="name" id="name">Loading…</h1>
+      <p class="cuisine" id="cuisine">&nbsp;</p>
+      <div class="meta" id="meta"></div>
     </div>
   </div>
+<script>
+  function applyData(data) {
+    const r = data.restaurant;
+    if (!r) return;
+    const hero = document.getElementById('hero');
+    hero.textContent = (r.items && r.items[0] && r.items[0].emoji) || '🍽';
+    hero.style.background = 'linear-gradient(135deg, ' + r.gradient[0] + ' 0%, ' + r.gradient[1] + ' 100%)';
+    document.getElementById('name').textContent = r.name;
+    document.getElementById('cuisine').textContent = r.cuisine + ' cuisine';
+    document.getElementById('meta').innerHTML =
+      '<span class="pill rating">★ ' + r.rating + '</span>' +
+      '<span class="pill eta">⏱ ' + r.etaMin + ' min</span>' +
+      '<span class="pill price">' + r.priceRange + '</span>';
+    document.getElementById('card').classList.remove('skeleton');
+  }
+${RENDER_LIFECYCLE_JS}
+</script>
 </body></html>`;
-}
 
-function buildOrderFormHTML(r: Restaurant): string {
-  const itemRows = r.items
-    .map(
-      (it) => `<label class="item">
-      <input type="checkbox" name="item" value="${escapeAttr(it.name)}" data-price="${it.price}" data-emoji="${escapeAttr(it.emoji)}">
-      <span class="label">${it.emoji} ${escapeHtml(it.name)}</span>
-      <span class="price">$${it.price.toFixed(2)}</span>
-    </label>`,
-    )
-    .join('\n');
-
-  return `<!doctype html>
+const ORDER_FORM_TEMPLATE = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><style>
   body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f7f7f7; padding: 20px; }
   .form { max-width: 360px; margin: 0 auto; background: white; border-radius: 16px; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
@@ -181,130 +166,116 @@ function buildOrderFormHTML(r: Restaurant): string {
   .ack { background: #e8f7ee; color: #2e7d32; padding: 10px 12px; border-radius: 8px; margin-top: 12px; font-size: 13px; display: none; }
   .ack.show { display: block; }
   .ack.error { background: #fdecea; color: #b71c1c; }
+  .skeleton .item, .skeleton h1 { opacity: 0.3; }
 </style></head><body>
-  <div class="form">
-    <h1>${escapeHtml(r.name)}</h1>
+  <div class="form skeleton" id="form">
+    <h1 id="rname">Loading…</h1>
     <p class="sub">Pick items, then add to cart:</p>
-    <div id="items">${itemRows}</div>
+    <div id="items"></div>
     <div class="total">Total: <span id="total">$0.00</span></div>
     <button id="submit" disabled>Add to Cart</button>
     <div class="ack" id="ack"></div>
   </div>
 <script>
-  const items = document.querySelectorAll('input[name="item"]');
-  const totalEl = document.getElementById('total');
-  const ackEl = document.getElementById('ack');
-  const submitEl = document.getElementById('submit');
-  const RESTAURANT_ID = ${JSON.stringify(r.id)};
+  let RID = null;
+  function escapeAttr(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function applyData(data) {
+    const r = data.restaurant;
+    if (!r) return;
+    RID = r.id;
+    document.getElementById('rname').textContent = r.name;
+    const items = document.getElementById('items');
+    items.innerHTML = '';
+    for (const it of r.items) {
+      const lab = document.createElement('label');
+      lab.className = 'item';
+      lab.innerHTML = '<input type="checkbox" name="item" value="' + escapeAttr(it.name) +
+        '" data-price="' + it.price + '" data-emoji="' + escapeAttr(it.emoji) + '">' +
+        '<span class="label">' + it.emoji + ' ' + it.name + '</span>' +
+        '<span class="price">$' + it.price.toFixed(2) + '</span>';
+      items.appendChild(lab);
+    }
+    items.querySelectorAll('input[name="item"]').forEach(i => i.addEventListener('change', recalc));
+    document.getElementById('form').classList.remove('skeleton');
+  }
 
   function recalc() {
     let total = 0, count = 0;
-    items.forEach((i) => { if (i.checked) { total += parseFloat(i.dataset.price); count++; } });
-    totalEl.textContent = '$' + total.toFixed(2);
-    submitEl.disabled = count === 0;
+    document.querySelectorAll('input[name="item"]').forEach(i => { if (i.checked) { total += parseFloat(i.dataset.price); count++; } });
+    document.getElementById('total').textContent = '$' + total.toFixed(2);
+    document.getElementById('submit').disabled = count === 0;
   }
-  items.forEach((i) => i.addEventListener('change', recalc));
 
-  // Try Pattern B first (direct tool call via MCP Apps bridge). If the host
-  // doesn't respond within the timeout, fall back to Pattern A (prompt intent
-  // → host forwards as a follow-up user turn → Claude calls add_to_cart).
-  function tryPatternB(toolName, params) {
+  // Pattern B via the MCP Apps adapter: send {type:'tool', messageId, payload:{toolName, params}}
+  // and await ui-message-response. With adapters.mcpApps.enabled = true on the server's
+  // UI resource, the auto-injected adapter script bridges this to a real MCP tool call.
+  function callServerTool(toolName, params) {
     return new Promise((resolve, reject) => {
-      const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+      const messageId = 'tool-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
       const timer = setTimeout(() => {
         window.removeEventListener('message', handler);
-        reject(new Error('Pattern B timeout (host did not route tool message)'));
-      }, 2000);
+        reject(new Error('host did not respond within 5s — Pattern B bridge unavailable'));
+      }, 5000);
       function handler(event) {
-        const data = event.data;
-        if (!data || data.messageId !== messageId) return;
-        if (data.type !== 'ui-message-response') return;
+        const d = event.data;
+        if (!d || d.messageId !== messageId) return;
+        if (d.type === 'ui-message-received') return; // ack only, ignore
+        if (d.type !== 'ui-message-response') return;
         clearTimeout(timer);
         window.removeEventListener('message', handler);
-        if (data.payload && data.payload.error) reject(data.payload.error);
-        else resolve(data.payload && data.payload.response);
+        if (d.payload && d.payload.error) reject(d.payload.error);
+        else resolve(d.payload && d.payload.response);
       }
       window.addEventListener('message', handler);
       window.parent.postMessage({ type: 'tool', messageId, payload: { toolName, params } }, '*');
     });
   }
 
-  function fallbackPatternA(restaurantId, restaurantName, items, total) {
-    const list = items.map((it) => it.name + ' ($' + it.price.toFixed(2) + ')').join(', ');
-    const prompt = 'Please add these items to my cart by calling the add_to_cart tool with restaurantId=' +
-      restaurantId + ' and items=' + JSON.stringify(items) +
-      '. Items: ' + list + '. Total: $' + total.toFixed(2) + ' from ' + restaurantName + '.';
+  function fallbackPatternA(items, total) {
+    const list = items.map(it => it.name + ' ($' + it.price.toFixed(2) + ')').join(', ');
+    const prompt = 'Please call add_to_cart with restaurantId=' + RID +
+      ' and items=' + JSON.stringify(items) + '. (Items: ' + list + '. Total: $' + total.toFixed(2) + '.)';
     window.parent.postMessage({ type: 'intent', payload: { intent: 'prompt', params: { prompt } } }, '*');
-    // Also fire a 'prompt'-typed message in case the host uses the alt format
     window.parent.postMessage({ type: 'prompt', payload: { prompt } }, '*');
   }
 
-  submitEl.addEventListener('click', async () => {
-    const selected = [...items]
-      .filter((i) => i.checked)
-      .map((i) => ({ name: i.value, price: parseFloat(i.dataset.price), emoji: i.dataset.emoji }));
+  document.getElementById('submit').addEventListener('click', async () => {
+    const all = [...document.querySelectorAll('input[name="item"]')];
+    const selected = all.filter(i => i.checked).map(i => ({
+      name: i.value, price: parseFloat(i.dataset.price), emoji: i.dataset.emoji,
+    }));
     const total = selected.reduce((s, it) => s + it.price, 0);
 
+    const submitEl = document.getElementById('submit');
+    const ackEl = document.getElementById('ack');
     submitEl.disabled = true;
     submitEl.textContent = 'Adding…';
     ackEl.classList.remove('show', 'error');
 
     try {
-      const result = await tryPatternB('add_to_cart', { restaurantId: RESTAURANT_ID, items: selected });
-      const text = (result && result.content && result.content[0] && result.content[0].text) || 'Items added (Pattern B — direct tool call).';
+      const result = await callServerTool('add_to_cart', { restaurantId: RID, items: selected });
+      const text = (result && result.content && result.content[0] && result.content[0].text) || 'Items added.';
       ackEl.textContent = '✓ Pattern B: ' + text;
       ackEl.classList.add('show');
       submitEl.textContent = 'Added to Cart ✓';
     } catch (_err) {
-      // Host doesn't bridge 'tool' messages in this UIResource format. Fall back.
-      fallbackPatternA(RESTAURANT_ID, ${JSON.stringify(r.name)}, selected, total);
-      ackEl.textContent = '↩ Pattern A fallback: asked the assistant to add these items. Watch the chat — Claude should call add_to_cart shortly.';
+      fallbackPatternA(selected, total);
+      ackEl.textContent = '↩ Pattern A fallback: asked the assistant to add these items. Watch the chat.';
       ackEl.classList.add('show');
       submitEl.textContent = 'Sent to Assistant ✓';
     }
   });
+${RENDER_LIFECYCLE_JS}
 </script>
 </body></html>`;
-}
 
-function buildCartHTML(cart: CartLine[]): string {
-  if (cart.length === 0) {
-    return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><style>
-  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f7f7f7; padding: 20px; }
-  .empty { max-width: 360px; margin: 40px auto; background: white; border-radius: 16px; padding: 32px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.08); color: #777; }
-  .empty .icon { font-size: 48px; margin-bottom: 12px; }
-  .empty h1 { margin: 0 0 6px 0; font-size: 18px; color: #1f1f1f; }
-</style></head><body>
-  <div class="empty"><div class="icon">🛒</div><h1>Your cart is empty</h1><p>Add items via the order form, then come back here.</p></div>
-</body></html>`;
-  }
-
-  // Group by restaurant
-  const byRest: Record<string, CartLine[]> = {};
-  for (const line of cart) (byRest[line.restaurantId] ??= []).push(line);
-
-  const sections = Object.entries(byRest)
-    .map(([rid, lines]) => {
-      const r = restaurants[rid as Restaurant['id']];
-      const rows = lines
-        .map(
-          (l) =>
-            `<div class="row"><span>${l.emoji} ${escapeHtml(l.name)}</span><span class="rprice">$${l.price.toFixed(2)}</span></div>`,
-        )
-        .join('\n');
-      const subtotal = lines.reduce((s, l) => s + l.price, 0);
-      return `<section><h2>${escapeHtml(r.name)} <span class="sub">(${escapeHtml(r.cuisine)})</span></h2>${rows}<div class="row subtotal"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div></section>`;
-    })
-    .join('\n');
-
-  const grandTotal = cart.reduce((s, l) => s + l.price, 0);
-  const itemCount = cart.length;
-
-  return `<!doctype html>
+const CART_TEMPLATE = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><style>
   body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f7f7f7; padding: 20px; }
   .cart { max-width: 400px; margin: 0 auto; background: white; border-radius: 16px; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+  .empty { text-align: center; color: #777; padding: 32px 0; }
+  .empty .icon { font-size: 48px; margin-bottom: 12px; }
   h1 { margin: 0 0 16px 0; font-size: 20px; }
   section { margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #eee; }
   section:last-of-type { border-bottom: none; }
@@ -316,64 +287,199 @@ function buildCartHTML(cart: CartLine[]): string {
   .grand { margin-top: 16px; padding-top: 14px; border-top: 2px solid #1f1f1f; display: flex; justify-content: space-between; font-weight: 700; font-size: 17px; }
   .meta { color: #777; font-size: 13px; margin: 0 0 14px 0; }
 </style></head><body>
-  <div class="cart">
+  <div class="cart" id="cart">
     <h1>🛒 Your Cart</h1>
-    <p class="meta">${itemCount} item${itemCount === 1 ? '' : 's'} from ${Object.keys(byRest).length} restaurant${Object.keys(byRest).length === 1 ? '' : 's'}</p>
-    ${sections}
-    <div class="grand"><span>Total</span><span>$${grandTotal.toFixed(2)}</span></div>
+    <p class="meta" id="meta">Loading…</p>
+    <div id="sections"></div>
+    <div class="grand" id="grand" style="display:none"><span>Total</span><span id="grandValue">$0.00</span></div>
   </div>
-</body></html>`;
-}
+<script>
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!),
-  );
-}
-function escapeAttr(s: string): string {
-  return escapeHtml(s);
+  function applyData(data) {
+    const cart = data.cart || [];
+    const restaurants = data.restaurants || {};
+    const sectionsEl = document.getElementById('sections');
+    const grandEl = document.getElementById('grand');
+    const metaEl = document.getElementById('meta');
+
+    if (cart.length === 0) {
+      sectionsEl.innerHTML = '<div class="empty"><div class="icon">🛒</div><div>Your cart is empty</div><p>Add items via the order form, then come back here.</p></div>';
+      grandEl.style.display = 'none';
+      metaEl.style.display = 'none';
+      return;
+    }
+
+    const byRest = {};
+    for (const line of cart) (byRest[line.restaurantId] = byRest[line.restaurantId] || []).push(line);
+    const restCount = Object.keys(byRest).length;
+    metaEl.textContent = cart.length + ' item' + (cart.length === 1 ? '' : 's') + ' from ' +
+      restCount + ' restaurant' + (restCount === 1 ? '' : 's');
+
+    let html = '';
+    for (const [rid, lines] of Object.entries(byRest)) {
+      const r = restaurants[rid] || { name: rid, cuisine: '' };
+      let rows = '';
+      let subtotal = 0;
+      for (const l of lines) {
+        rows += '<div class="row"><span>' + (l.emoji || '🍴') + ' ' + escapeHtml(l.name) +
+          '</span><span class="rprice">$' + l.price.toFixed(2) + '</span></div>';
+        subtotal += l.price;
+      }
+      html += '<section><h2>' + escapeHtml(r.name) +
+        ' <span class="sub">(' + escapeHtml(r.cuisine) + ')</span></h2>' + rows +
+        '<div class="row subtotal"><span>Subtotal</span><span>$' + subtotal.toFixed(2) + '</span></div></section>';
+    }
+    sectionsEl.innerHTML = html;
+    const total = cart.reduce((s, l) => s + l.price, 0);
+    document.getElementById('grandValue').textContent = '$' + total.toFixed(2);
+    grandEl.style.display = '';
+  }
+${RENDER_LIFECYCLE_JS}
+</script>
+</body></html>`;
+
+// ───────────────────────────────────────────────────────────────────────────
+// Legacy helper for show_menu_page (externalUrl, no bridge needed).
+// ───────────────────────────────────────────────────────────────────────────
+
+type LegacyUIResource = {
+  type: 'resource';
+  resource: {
+    uri: `ui://${string}`;
+    mimeType: 'text/uri-list';
+    text: string;
+    _meta?: Record<string, unknown>;
+  };
+};
+
+function externalUrlResource(uri: `ui://${string}`, iframeUrl: string, framePx?: [string, string]): LegacyUIResource {
+  return {
+    type: 'resource',
+    resource: {
+      uri,
+      mimeType: 'text/uri-list',
+      text: iframeUrl,
+      ...(framePx ? { _meta: { 'mcpui.dev/ui-preferred-frame-size': framePx } } : {}),
+    },
+  };
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// MCP server factory — registers all tools.
-// Cart state is per-server-instance (per-session for HTTP, process-lifetime for stdio).
+// MCP server factory.
 // ───────────────────────────────────────────────────────────────────────────
 
 const restaurantIdSchema = z
   .enum(['r1', 'r2', 'r3'])
   .describe('Restaurant ID. r1=Pizza Paradiso, r2=Sushi Zen, r3=Curry House');
 
-function buildServer(): McpServer {
-  const server = new McpServer({ name: 'mcp-ui-demo', version: '0.2.0' });
+async function buildServer(): Promise<McpServer> {
+  const server = new McpServer({ name: 'mcp-ui-demo', version: '0.3.0' });
   const cart: CartLine[] = [];
 
-  // ── UI tools (return UIResource with mcpApps adapter for direct tool-call back) ──
+  // Register UI resources (fixed templates) with the MCP Apps adapter enabled.
+  // The adapter script auto-injected by the SDK bridges {type:'tool',...} postMessages
+  // from the iframe directly to MCP tool calls — no LLM round-trip.
 
-  server.registerTool(
+  const cardUI = await createUIResource({
+    uri: 'ui://mcp-ui-demo/template/restaurant-card',
+    content: { type: 'rawHtml', htmlString: RESTAURANT_CARD_TEMPLATE },
+    encoding: 'text',
+    uiMetadata: { 'preferred-frame-size': ['400px', '320px'] },
+    adapters: { mcpApps: { enabled: true } },
+  });
+
+  const orderFormUI = await createUIResource({
+    uri: 'ui://mcp-ui-demo/template/order-form',
+    content: { type: 'rawHtml', htmlString: ORDER_FORM_TEMPLATE },
+    encoding: 'text',
+    uiMetadata: { 'preferred-frame-size': ['400px', '500px'] },
+    adapters: { mcpApps: { enabled: true } },
+  });
+
+  const cartUI = await createUIResource({
+    uri: 'ui://mcp-ui-demo/template/cart',
+    content: { type: 'rawHtml', htmlString: CART_TEMPLATE },
+    encoding: 'text',
+    uiMetadata: { 'preferred-frame-size': ['440px', '500px'] },
+    adapters: { mcpApps: { enabled: true } },
+  });
+
+  registerAppResource(server, 'restaurant_card_ui', cardUI.resource.uri, {}, async () => ({
+    contents: [cardUI.resource],
+  }));
+  registerAppResource(server, 'order_form_ui', orderFormUI.resource.uri, {}, async () => ({
+    contents: [orderFormUI.resource],
+  }));
+  registerAppResource(server, 'cart_ui', cartUI.resource.uri, {}, async () => ({
+    contents: [cartUI.resource],
+  }));
+
+  // ── UI tools (App-registered) ──
+
+  registerAppTool(
+    server,
     'show_restaurant_card',
     {
-      title: 'Show Restaurant Card',
       description:
-        'Returns a styled UI card for a restaurant (rawHtml mode). Demonstrates rich, inline-styled HTML rendered in a sandboxed iframe.',
+        'Show a styled restaurant card in an interactive widget. Returns restaurant data; the linked UI template renders it.',
       inputSchema: { restaurantId: restaurantIdSchema },
+      _meta: { ui: { resourceUri: cardUI.resource.uri } },
     },
     async ({ restaurantId }) => {
       const r = restaurants[restaurantId];
-      const ui = rawHtmlResource(
-        `ui://mcp-ui-demo/restaurant/${r.id}`,
-        buildRestaurantCardHTML(r),
-        ['400px', '320px'],
-      );
-      return { content: [ui] };
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ restaurant: r }) }],
+      };
     },
   );
+
+  registerAppTool(
+    server,
+    'show_order_form',
+    {
+      description:
+        'Show an interactive order form for a restaurant. Submitting calls add_to_cart DIRECTLY via the MCP Apps bridge — no LLM round-trip (Pattern B).',
+      inputSchema: { restaurantId: restaurantIdSchema },
+      _meta: { ui: { resourceUri: orderFormUI.resource.uri } },
+    },
+    async ({ restaurantId }) => {
+      const r = restaurants[restaurantId];
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ restaurant: r }) }],
+      };
+    },
+  );
+
+  registerAppTool(
+    server,
+    'view_cart',
+    {
+      description:
+        'Show the current shopping cart as a styled UI. Cart state is shared across all tools in this session.',
+      inputSchema: {},
+      _meta: { ui: { resourceUri: cartUI.resource.uri } },
+    },
+    async () => {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({ cart, restaurants }),
+          },
+        ],
+      };
+    },
+  );
+
+  // ── Legacy externalUrl (no bridge needed) ──
 
   server.registerTool(
     'show_menu_page',
     {
       title: 'Show Menu Page',
       description:
-        "Embeds the cuisine's Wikipedia page in an iframe (externalUrl mode). Demonstrates handing the host any third-party URL.",
+        "Embeds the cuisine's Wikipedia page in an iframe (externalUrl mode). No bridge needed — host just loads the URL.",
       inputSchema: { restaurantId: restaurantIdSchema },
     },
     async ({ restaurantId }) => {
@@ -387,40 +493,7 @@ function buildServer(): McpServer {
     },
   );
 
-  server.registerTool(
-    'show_order_form',
-    {
-      title: 'Show Order Form',
-      description:
-        'Returns an interactive order form. Submit tries Pattern B (direct tool call to add_to_cart via MCP Apps bridge) first, falling back to Pattern A (prompt intent → Claude calls add_to_cart) if the bridge is unavailable.',
-      inputSchema: { restaurantId: restaurantIdSchema },
-    },
-    async ({ restaurantId }) => {
-      const r = restaurants[restaurantId];
-      const ui = rawHtmlResource(
-        `ui://mcp-ui-demo/order-form/${r.id}`,
-        buildOrderFormHTML(r),
-        ['400px', '500px'],
-      );
-      return { content: [ui] };
-    },
-  );
-
-  server.registerTool(
-    'view_cart',
-    {
-      title: 'View Cart',
-      description:
-        'Show the current shopping cart as a styled UI. Cart state is shared across all tools in this session.',
-      inputSchema: {},
-    },
-    async () => {
-      const ui = rawHtmlResource('ui://mcp-ui-demo/cart', buildCartHTML(cart), ['440px', '500px']);
-      return { content: [ui] };
-    },
-  );
-
-  // ── Non-UI tools (called from iframes via Pattern B) ──
+  // ── Non-UI tools (called from iframes via Pattern B, or directly by Claude) ──
 
   server.registerTool(
     'add_to_cart',
@@ -481,11 +554,11 @@ function buildServer(): McpServer {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// Transport bootstrap — branches on MCP_TRANSPORT env var.
+// Transport bootstrap.
 // ───────────────────────────────────────────────────────────────────────────
 
 async function startStdio(): Promise<void> {
-  const server = buildServer();
+  const server = await buildServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error('mcp-ui-demo: stdio transport ready');
@@ -526,7 +599,7 @@ function startHttp(): void {
           delete transports[transport.sessionId];
         }
       };
-      const server = buildServer();
+      const server = await buildServer();
       await server.connect(transport);
     } else {
       res
