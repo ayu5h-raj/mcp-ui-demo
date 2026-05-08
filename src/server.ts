@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 // ───────────────────────────────────────────────────────────────────────────
-// Mock data — three restaurants, four items each. Edit to taste.
+// Mock data — three restaurants, four items each.
 // ───────────────────────────────────────────────────────────────────────────
 
 type Restaurant = {
@@ -75,6 +75,8 @@ const restaurants: Record<Restaurant['id'], Restaurant> = {
   },
 };
 
+type CartLine = { restaurantId: Restaurant['id']; name: string; price: number; emoji: string };
+
 // ───────────────────────────────────────────────────────────────────────────
 // HTML builders
 // ───────────────────────────────────────────────────────────────────────────
@@ -113,7 +115,7 @@ function buildOrderFormHTML(r: Restaurant): string {
   const itemRows = r.items
     .map(
       (it) => `<label class="item">
-      <input type="checkbox" name="item" value="${escapeAttr(it.name)}" data-price="${it.price}">
+      <input type="checkbox" name="item" value="${escapeAttr(it.name)}" data-price="${it.price}" data-emoji="${escapeAttr(it.emoji)}">
       <span class="label">${it.emoji} ${escapeHtml(it.name)}</span>
       <span class="price">$${it.price.toFixed(2)}</span>
     </label>`,
@@ -136,14 +138,15 @@ function buildOrderFormHTML(r: Restaurant): string {
   button:disabled { background: #ccc; cursor: not-allowed; }
   .ack { background: #e8f7ee; color: #2e7d32; padding: 10px 12px; border-radius: 8px; margin-top: 12px; font-size: 13px; display: none; }
   .ack.show { display: block; }
+  .ack.error { background: #fdecea; color: #b71c1c; }
 </style></head><body>
   <div class="form">
     <h1>${escapeHtml(r.name)}</h1>
-    <p class="sub">Pick items, then place your order:</p>
+    <p class="sub">Pick items, then add to cart:</p>
     <div id="items">${itemRows}</div>
     <div class="total">Total: <span id="total">$0.00</span></div>
-    <button id="submit" disabled>Place Order</button>
-    <div class="ack" id="ack">Order placed — intent posted to host. Check the host's message log.</div>
+    <button id="submit" disabled>Add to Cart</button>
+    <div class="ack" id="ack"></div>
   </div>
 <script>
   const items = document.querySelectorAll('input[name="item"]');
@@ -151,7 +154,6 @@ function buildOrderFormHTML(r: Restaurant): string {
   const ackEl = document.getElementById('ack');
   const submitEl = document.getElementById('submit');
   const RESTAURANT_ID = ${JSON.stringify(r.id)};
-  const RESTAURANT_NAME = ${JSON.stringify(r.name)};
 
   function recalc() {
     let total = 0, count = 0;
@@ -161,36 +163,113 @@ function buildOrderFormHTML(r: Restaurant): string {
   }
   items.forEach((i) => i.addEventListener('change', recalc));
 
-  submitEl.addEventListener('click', () => {
+  // Pattern B: call the server tool directly via the MCP Apps adapter.
+  // The adapter script (auto-injected by @mcp-ui/server when adapters.mcpApps.enabled
+  // is set) listens for {type, messageId, payload} postMessages and routes them to
+  // the host, which calls the named MCP tool — no LLM round-trip.
+  function callServerTool(toolName, params) {
+    return new Promise((resolve, reject) => {
+      const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+      const timer = setTimeout(() => {
+        window.removeEventListener('message', handler);
+        reject(new Error('tool call timed out after 10s'));
+      }, 10000);
+      function handler(event) {
+        const data = event.data;
+        if (!data || data.messageId !== messageId) return;
+        if (data.type !== 'ui-message-response') return;
+        clearTimeout(timer);
+        window.removeEventListener('message', handler);
+        if (data.payload && data.payload.error) reject(data.payload.error);
+        else resolve(data.payload && data.payload.response);
+      }
+      window.addEventListener('message', handler);
+      window.parent.postMessage({ type: 'tool', messageId, payload: { toolName, params } }, '*');
+    });
+  }
+
+  submitEl.addEventListener('click', async () => {
     const selected = [...items]
       .filter((i) => i.checked)
-      .map((i) => ({ name: i.value, price: parseFloat(i.dataset.price) }));
-    const total = selected.reduce((s, it) => s + it.price, 0);
-    const itemList = selected.map((it) => it.name + ' ($' + it.price.toFixed(2) + ')').join(', ');
-    const summary = 'I just placed an order at ' + RESTAURANT_NAME + ' (' + RESTAURANT_ID + '): ' + itemList + '. Total: $' + total.toFixed(2) + '. Acknowledge the order and suggest a drink pairing.';
+      .map((i) => ({ name: i.value, price: parseFloat(i.dataset.price), emoji: i.dataset.emoji }));
 
-    // Standard MCP-UI host-recognized intent: 'prompt' = send the text to the LLM as a follow-up message.
-    window.parent.postMessage({
-      type: 'intent',
-      payload: { intent: 'prompt', params: { prompt: summary } },
-    }, '*');
-
-    // Also emit the structured event for hosts (e.g. ui-inspector) that log raw messages.
-    window.parent.postMessage({
-      type: 'intent',
-      payload: {
-        intent: 'place-order',
-        restaurantId: RESTAURANT_ID,
-        items: selected,
-        total: Number(total.toFixed(2)),
-      },
-    }, '*');
-
-    ackEl.classList.add('show');
     submitEl.disabled = true;
-    submitEl.textContent = 'Order Placed ✓';
+    submitEl.textContent = 'Adding…';
+    ackEl.classList.remove('show', 'error');
+
+    try {
+      const result = await callServerTool('add_to_cart', { restaurantId: RESTAURANT_ID, items: selected });
+      const text = (result && result.content && result.content[0] && result.content[0].text) || 'Items added.';
+      ackEl.textContent = text;
+      ackEl.classList.add('show');
+      submitEl.textContent = 'Added to Cart ✓';
+    } catch (err) {
+      const msg = (err && (err.message || err.toString())) || 'Unknown error';
+      ackEl.textContent = 'Could not add to cart: ' + msg + '. (If you are running outside an MCP Apps host, try asking the assistant to "view my cart" — the demo also exposes that as a regular tool.)';
+      ackEl.classList.add('show', 'error');
+      submitEl.disabled = false;
+      submitEl.textContent = 'Add to Cart';
+    }
   });
 </script>
+</body></html>`;
+}
+
+function buildCartHTML(cart: CartLine[]): string {
+  if (cart.length === 0) {
+    return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><style>
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f7f7f7; padding: 20px; }
+  .empty { max-width: 360px; margin: 40px auto; background: white; border-radius: 16px; padding: 32px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.08); color: #777; }
+  .empty .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty h1 { margin: 0 0 6px 0; font-size: 18px; color: #1f1f1f; }
+</style></head><body>
+  <div class="empty"><div class="icon">🛒</div><h1>Your cart is empty</h1><p>Add items via the order form, then come back here.</p></div>
+</body></html>`;
+  }
+
+  // Group by restaurant
+  const byRest: Record<string, CartLine[]> = {};
+  for (const line of cart) (byRest[line.restaurantId] ??= []).push(line);
+
+  const sections = Object.entries(byRest)
+    .map(([rid, lines]) => {
+      const r = restaurants[rid as Restaurant['id']];
+      const rows = lines
+        .map(
+          (l) =>
+            `<div class="row"><span>${l.emoji} ${escapeHtml(l.name)}</span><span class="rprice">$${l.price.toFixed(2)}</span></div>`,
+        )
+        .join('\n');
+      const subtotal = lines.reduce((s, l) => s + l.price, 0);
+      return `<section><h2>${escapeHtml(r.name)} <span class="sub">(${escapeHtml(r.cuisine)})</span></h2>${rows}<div class="row subtotal"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div></section>`;
+    })
+    .join('\n');
+
+  const grandTotal = cart.reduce((s, l) => s + l.price, 0);
+  const itemCount = cart.length;
+
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><style>
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f7f7f7; padding: 20px; }
+  .cart { max-width: 400px; margin: 0 auto; background: white; border-radius: 16px; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+  h1 { margin: 0 0 16px 0; font-size: 20px; }
+  section { margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #eee; }
+  section:last-of-type { border-bottom: none; }
+  section h2 { margin: 0 0 10px 0; font-size: 15px; color: #444; }
+  section h2 .sub { color: #999; font-weight: 400; font-size: 13px; }
+  .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+  .row.subtotal { font-weight: 600; color: #555; padding-top: 10px; border-top: 1px dashed #eee; margin-top: 6px; }
+  .rprice { color: #555; font-weight: 500; }
+  .grand { margin-top: 16px; padding-top: 14px; border-top: 2px solid #1f1f1f; display: flex; justify-content: space-between; font-weight: 700; font-size: 17px; }
+  .meta { color: #777; font-size: 13px; margin: 0 0 14px 0; }
+</style></head><body>
+  <div class="cart">
+    <h1>🛒 Your Cart</h1>
+    <p class="meta">${itemCount} item${itemCount === 1 ? '' : 's'} from ${Object.keys(byRest).length} restaurant${Object.keys(byRest).length === 1 ? '' : 's'}</p>
+    ${sections}
+    <div class="grand"><span>Total</span><span>$${grandTotal.toFixed(2)}</span></div>
+  </div>
 </body></html>`;
 }
 
@@ -204,7 +283,8 @@ function escapeAttr(s: string): string {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// MCP server factory — registers all three tools
+// MCP server factory — registers all tools.
+// Cart state is per-server-instance (per-session for HTTP, process-lifetime for stdio).
 // ───────────────────────────────────────────────────────────────────────────
 
 const restaurantIdSchema = z
@@ -212,7 +292,10 @@ const restaurantIdSchema = z
   .describe('Restaurant ID. r1=Pizza Paradiso, r2=Sushi Zen, r3=Curry House');
 
 function buildServer(): McpServer {
-  const server = new McpServer({ name: 'mcp-ui-demo', version: '0.1.0' });
+  const server = new McpServer({ name: 'mcp-ui-demo', version: '0.2.0' });
+  const cart: CartLine[] = [];
+
+  // ── UI tools (return UIResource with mcpApps adapter for direct tool-call back) ──
 
   server.registerTool(
     'show_restaurant_card',
@@ -229,6 +312,7 @@ function buildServer(): McpServer {
         content: { type: 'rawHtml', htmlString: buildRestaurantCardHTML(r) },
         encoding: 'text',
         uiMetadata: { 'preferred-frame-size': ['400px', '320px'] },
+        adapters: { mcpApps: { enabled: true } },
       });
       return { content: [ui] };
     },
@@ -249,6 +333,7 @@ function buildServer(): McpServer {
         content: { type: 'externalUrl', iframeUrl: r.cuisineWikiUrl },
         encoding: 'text',
         uiMetadata: { 'preferred-frame-size': ['100%', '600px'] },
+        adapters: { mcpApps: { enabled: true } },
       });
       return { content: [ui] };
     },
@@ -259,7 +344,7 @@ function buildServer(): McpServer {
     {
       title: 'Show Order Form',
       description:
-        'Returns an interactive order form (rawHtml + postMessage). Submitting posts an "intent" message back to the host — demonstrates guest→host bidirectional UI.',
+        'Returns an interactive order form. Pattern B: clicking "Add to Cart" calls the add_to_cart tool DIRECTLY via the MCP Apps adapter — no LLM round-trip. Server cart state updates live.',
       inputSchema: { restaurantId: restaurantIdSchema },
     },
     async ({ restaurantId }) => {
@@ -269,8 +354,86 @@ function buildServer(): McpServer {
         content: { type: 'rawHtml', htmlString: buildOrderFormHTML(r) },
         encoding: 'text',
         uiMetadata: { 'preferred-frame-size': ['400px', '500px'] },
+        adapters: { mcpApps: { enabled: true } },
       });
       return { content: [ui] };
+    },
+  );
+
+  server.registerTool(
+    'view_cart',
+    {
+      title: 'View Cart',
+      description:
+        'Show the current shopping cart as a styled UI. Cart state is shared across all tools in this session.',
+      inputSchema: {},
+    },
+    async () => {
+      const ui = await createUIResource({
+        uri: 'ui://mcp-ui-demo/cart',
+        content: { type: 'rawHtml', htmlString: buildCartHTML(cart) },
+        encoding: 'text',
+        uiMetadata: { 'preferred-frame-size': ['440px', '500px'] },
+        adapters: { mcpApps: { enabled: true } },
+      });
+      return { content: [ui] };
+    },
+  );
+
+  // ── Non-UI tools (called from iframes via Pattern B) ──
+
+  server.registerTool(
+    'add_to_cart',
+    {
+      title: 'Add to Cart',
+      description:
+        'Append items to the session cart. Called directly from the order-form iframe via the MCP Apps adapter (no LLM in the loop).',
+      inputSchema: {
+        restaurantId: restaurantIdSchema,
+        items: z
+          .array(
+            z.object({
+              name: z.string(),
+              price: z.number(),
+              emoji: z.string().optional(),
+            }),
+          )
+          .min(1)
+          .describe('Items to add to the cart'),
+      },
+    },
+    async ({ restaurantId, items }) => {
+      for (const it of items) {
+        cart.push({ restaurantId, name: it.name, price: it.price, emoji: it.emoji ?? '🍴' });
+      }
+      const total = cart.reduce((s, l) => s + l.price, 0);
+      const r = restaurants[restaurantId];
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Added ${items.length} item${items.length === 1 ? '' : 's'} from ${r.name}. Cart now has ${cart.length} item${cart.length === 1 ? '' : 's'}, total $${total.toFixed(2)}.`,
+          },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    'clear_cart',
+    {
+      title: 'Clear Cart',
+      description: 'Empty the session cart.',
+      inputSchema: {},
+    },
+    async () => {
+      const n = cart.length;
+      cart.length = 0;
+      return {
+        content: [
+          { type: 'text', text: `Cleared ${n} item${n === 1 ? '' : 's'} from the cart.` },
+        ],
+      };
     },
   );
 
@@ -278,14 +441,13 @@ function buildServer(): McpServer {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// Transport bootstrap — branches on MCP_TRANSPORT env var
+// Transport bootstrap — branches on MCP_TRANSPORT env var.
 // ───────────────────────────────────────────────────────────────────────────
 
 async function startStdio(): Promise<void> {
   const server = buildServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  // stderr only — stdout is reserved for the MCP framing protocol
   console.error('mcp-ui-demo: stdio transport ready');
 }
 

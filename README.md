@@ -1,16 +1,26 @@
 # mcp-ui-demo
 
-A minimal demo of [MCP-UI](https://mcpui.dev/): one TypeScript MCP server, three tools, each rendering a different kind of UI inside a sandboxed iframe in the host (Claude Desktop, ui-inspector, etc.).
+A minimal demo of [MCP-UI](https://mcpui.dev/): one TypeScript MCP server, six tools, three rendering modes plus **Pattern B** (iframe → server tool call with no LLM round-trip), inside a sandboxed iframe in the host (Claude Desktop, ui-inspector, etc.).
 
 ## What you get
 
-| Tool | Mode | What it shows |
+| Tool | Kind | What it shows |
 |---|---|---|
-| `show_restaurant_card` | `rawHtml` | A styled restaurant card with rating / ETA / price — pure inline-CSS HTML rendered in a sandboxed iframe. |
-| `show_menu_page` | `externalUrl` | The cuisine's Wikipedia page embedded as an iframe — host loads any URL you hand it. |
-| `show_order_form` | `rawHtml` + `postMessage` | An interactive order form. Submitting posts an `intent` message back to the host (visible in the host's message log). Demonstrates guest→host UI. |
+| `show_restaurant_card` | UI: `rawHtml` | A styled restaurant card with rating / ETA / price — pure inline-CSS HTML rendered in a sandboxed iframe. |
+| `show_menu_page` | UI: `externalUrl` | The cuisine's Wikipedia page embedded as an iframe — host loads any URL you hand it. |
+| `show_order_form` | UI: `rawHtml` + Pattern B | Interactive order form. Clicking "Add to Cart" calls the `add_to_cart` tool **directly** via the MCP Apps adapter — no LLM round-trip. Server cart state updates live. |
+| `view_cart` | UI: `rawHtml` | Renders the current shopping cart (items grouped by restaurant + total) as a styled UI. |
+| `add_to_cart` | data | Appends items to the session cart. Called from the order-form iframe (Pattern B) or directly by Claude. |
+| `clear_cart` | data | Empties the session cart. |
 
-All three tools take one input: `restaurantId` ∈ `{r1, r2, r3}` (Pizza Paradiso, Sushi Zen, Curry House — themed as a Swiggy preview).
+All UI tools that take a restaurant accept `restaurantId` ∈ `{r1, r2, r3}` — Pizza Paradiso, Sushi Zen, Curry House (Swiggy-themed warm-up for Phase 2).
+
+## Pattern A vs Pattern B
+
+- **Pattern A** (Claude in the loop): UI posts a `prompt` intent → host forwards as a follow-up user turn → Claude reads it and decides what to call. Slow, token-expensive, but flexible.
+- **Pattern B** (direct tool call): UI sends `{type: 'tool', payload: {toolName, params}}` → host routes to the MCP server directly → server returns result to the iframe. Fast, deterministic, free. **This is what production apps (Excalidraw, Swiggy widgets) use.**
+
+This demo wires `show_order_form` for Pattern B end-to-end. Click "Add to Cart" → cart state updates server-side → ask Claude "what's in my cart?" and it calls `view_cart` to read the same state back.
 
 ## Quickstart
 
