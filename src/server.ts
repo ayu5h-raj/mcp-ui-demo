@@ -4,9 +4,51 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
-import { createUIResource } from '@mcp-ui/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
+
+// We deliberately avoid @mcp-ui/server's createUIResource here because v6 hard-codes
+// mimeType to 'text/html;profile=mcp-app', which Claude Desktop treats as data unless
+// it's registered as a proper MCP App via registerAppTool/registerAppResource. For a
+// minimal demo we hand-roll the UIResource with the legacy 'text/html' mime — Claude
+// Desktop and ui-inspector both render it as an iframe out of the box.
+type UIResource = {
+  type: 'resource';
+  resource: {
+    uri: `ui://${string}`;
+    mimeType: 'text/html' | 'text/uri-list';
+    text: string;
+    _meta?: Record<string, unknown>;
+  };
+};
+
+function rawHtmlResource(uri: `ui://${string}`, htmlString: string, framePx?: [string, string]): UIResource {
+  return {
+    type: 'resource',
+    resource: {
+      uri,
+      mimeType: 'text/html',
+      text: htmlString,
+      ...(framePx
+        ? { _meta: { 'mcpui.dev/ui-preferred-frame-size': framePx } }
+        : {}),
+    },
+  };
+}
+
+function externalUrlResource(uri: `ui://${string}`, iframeUrl: string, framePx?: [string, string]): UIResource {
+  return {
+    type: 'resource',
+    resource: {
+      uri,
+      mimeType: 'text/uri-list',
+      text: iframeUrl,
+      ...(framePx
+        ? { _meta: { 'mcpui.dev/ui-preferred-frame-size': framePx } }
+        : {}),
+    },
+  };
+}
 
 // ───────────────────────────────────────────────────────────────────────────
 // Mock data — three restaurants, four items each.
@@ -163,17 +205,16 @@ function buildOrderFormHTML(r: Restaurant): string {
   }
   items.forEach((i) => i.addEventListener('change', recalc));
 
-  // Pattern B: call the server tool directly via the MCP Apps adapter.
-  // The adapter script (auto-injected by @mcp-ui/server when adapters.mcpApps.enabled
-  // is set) listens for {type, messageId, payload} postMessages and routes them to
-  // the host, which calls the named MCP tool — no LLM round-trip.
-  function callServerTool(toolName, params) {
+  // Try Pattern B first (direct tool call via MCP Apps bridge). If the host
+  // doesn't respond within the timeout, fall back to Pattern A (prompt intent
+  // → host forwards as a follow-up user turn → Claude calls add_to_cart).
+  function tryPatternB(toolName, params) {
     return new Promise((resolve, reject) => {
       const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
       const timer = setTimeout(() => {
         window.removeEventListener('message', handler);
-        reject(new Error('tool call timed out after 10s'));
-      }, 10000);
+        reject(new Error('Pattern B timeout (host did not route tool message)'));
+      }, 2000);
       function handler(event) {
         const data = event.data;
         if (!data || data.messageId !== messageId) return;
@@ -188,27 +229,38 @@ function buildOrderFormHTML(r: Restaurant): string {
     });
   }
 
+  function fallbackPatternA(restaurantId, restaurantName, items, total) {
+    const list = items.map((it) => it.name + ' ($' + it.price.toFixed(2) + ')').join(', ');
+    const prompt = 'Please add these items to my cart by calling the add_to_cart tool with restaurantId=' +
+      restaurantId + ' and items=' + JSON.stringify(items) +
+      '. Items: ' + list + '. Total: $' + total.toFixed(2) + ' from ' + restaurantName + '.';
+    window.parent.postMessage({ type: 'intent', payload: { intent: 'prompt', params: { prompt } } }, '*');
+    // Also fire a 'prompt'-typed message in case the host uses the alt format
+    window.parent.postMessage({ type: 'prompt', payload: { prompt } }, '*');
+  }
+
   submitEl.addEventListener('click', async () => {
     const selected = [...items]
       .filter((i) => i.checked)
       .map((i) => ({ name: i.value, price: parseFloat(i.dataset.price), emoji: i.dataset.emoji }));
+    const total = selected.reduce((s, it) => s + it.price, 0);
 
     submitEl.disabled = true;
     submitEl.textContent = 'Adding…';
     ackEl.classList.remove('show', 'error');
 
     try {
-      const result = await callServerTool('add_to_cart', { restaurantId: RESTAURANT_ID, items: selected });
-      const text = (result && result.content && result.content[0] && result.content[0].text) || 'Items added.';
-      ackEl.textContent = text;
+      const result = await tryPatternB('add_to_cart', { restaurantId: RESTAURANT_ID, items: selected });
+      const text = (result && result.content && result.content[0] && result.content[0].text) || 'Items added (Pattern B — direct tool call).';
+      ackEl.textContent = '✓ Pattern B: ' + text;
       ackEl.classList.add('show');
       submitEl.textContent = 'Added to Cart ✓';
-    } catch (err) {
-      const msg = (err && (err.message || err.toString())) || 'Unknown error';
-      ackEl.textContent = 'Could not add to cart: ' + msg + '. (If you are running outside an MCP Apps host, try asking the assistant to "view my cart" — the demo also exposes that as a regular tool.)';
-      ackEl.classList.add('show', 'error');
-      submitEl.disabled = false;
-      submitEl.textContent = 'Add to Cart';
+    } catch (_err) {
+      // Host doesn't bridge 'tool' messages in this UIResource format. Fall back.
+      fallbackPatternA(RESTAURANT_ID, ${JSON.stringify(r.name)}, selected, total);
+      ackEl.textContent = '↩ Pattern A fallback: asked the assistant to add these items. Watch the chat — Claude should call add_to_cart shortly.';
+      ackEl.classList.add('show');
+      submitEl.textContent = 'Sent to Assistant ✓';
     }
   });
 </script>
@@ -307,13 +359,11 @@ function buildServer(): McpServer {
     },
     async ({ restaurantId }) => {
       const r = restaurants[restaurantId];
-      const ui = await createUIResource({
-        uri: `ui://mcp-ui-demo/restaurant/${r.id}`,
-        content: { type: 'rawHtml', htmlString: buildRestaurantCardHTML(r) },
-        encoding: 'text',
-        uiMetadata: { 'preferred-frame-size': ['400px', '320px'] },
-        adapters: { mcpApps: { enabled: true } },
-      });
+      const ui = rawHtmlResource(
+        `ui://mcp-ui-demo/restaurant/${r.id}`,
+        buildRestaurantCardHTML(r),
+        ['400px', '320px'],
+      );
       return { content: [ui] };
     },
   );
@@ -328,13 +378,11 @@ function buildServer(): McpServer {
     },
     async ({ restaurantId }) => {
       const r = restaurants[restaurantId];
-      const ui = await createUIResource({
-        uri: `ui://mcp-ui-demo/menu/${r.id}`,
-        content: { type: 'externalUrl', iframeUrl: r.cuisineWikiUrl },
-        encoding: 'text',
-        uiMetadata: { 'preferred-frame-size': ['100%', '600px'] },
-        adapters: { mcpApps: { enabled: true } },
-      });
+      const ui = externalUrlResource(
+        `ui://mcp-ui-demo/menu/${r.id}`,
+        r.cuisineWikiUrl,
+        ['100%', '600px'],
+      );
       return { content: [ui] };
     },
   );
@@ -344,18 +392,16 @@ function buildServer(): McpServer {
     {
       title: 'Show Order Form',
       description:
-        'Returns an interactive order form. Pattern B: clicking "Add to Cart" calls the add_to_cart tool DIRECTLY via the MCP Apps adapter — no LLM round-trip. Server cart state updates live.',
+        'Returns an interactive order form. Submit tries Pattern B (direct tool call to add_to_cart via MCP Apps bridge) first, falling back to Pattern A (prompt intent → Claude calls add_to_cart) if the bridge is unavailable.',
       inputSchema: { restaurantId: restaurantIdSchema },
     },
     async ({ restaurantId }) => {
       const r = restaurants[restaurantId];
-      const ui = await createUIResource({
-        uri: `ui://mcp-ui-demo/order-form/${r.id}`,
-        content: { type: 'rawHtml', htmlString: buildOrderFormHTML(r) },
-        encoding: 'text',
-        uiMetadata: { 'preferred-frame-size': ['400px', '500px'] },
-        adapters: { mcpApps: { enabled: true } },
-      });
+      const ui = rawHtmlResource(
+        `ui://mcp-ui-demo/order-form/${r.id}`,
+        buildOrderFormHTML(r),
+        ['400px', '500px'],
+      );
       return { content: [ui] };
     },
   );
@@ -369,13 +415,7 @@ function buildServer(): McpServer {
       inputSchema: {},
     },
     async () => {
-      const ui = await createUIResource({
-        uri: 'ui://mcp-ui-demo/cart',
-        content: { type: 'rawHtml', htmlString: buildCartHTML(cart) },
-        encoding: 'text',
-        uiMetadata: { 'preferred-frame-size': ['440px', '500px'] },
-        adapters: { mcpApps: { enabled: true } },
-      });
+      const ui = rawHtmlResource('ui://mcp-ui-demo/cart', buildCartHTML(cart), ['440px', '500px']);
       return { content: [ui] };
     },
   );
