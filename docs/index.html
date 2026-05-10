@@ -20,63 +20,37 @@
     padding: 32px 16px 80px;
   }
 
-  /* ── Header ────────────────────────────────────────────────────────── */
+  /* ── Top nav + header ─────────────────────────────────────────────── */
   .topnav {
-    max-width: 1280px;
-    margin: 0 auto 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    max-width: 1280px; margin: 0 auto 28px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
   }
-  .topnav .brand {
-    font-weight: 700; font-size: 14px; color: #4b5563;
-    display: flex; align-items: center; gap: 8px;
-  }
+  .topnav .brand { font-weight: 700; font-size: 14px; color: #4b5563; display: flex; align-items: center; gap: 8px; }
   .topnav .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: #fc8019; }
   .topnav .links { display: flex; gap: 18px; font-size: 13px; }
   .topnav a { color: #4b5563; text-decoration: none; font-weight: 500; }
   .topnav a:hover { color: #1f2937; text-decoration: underline; }
 
   .header {
-    max-width: 1280px;
-    margin: 0 auto 36px;
-    text-align: center;
-    padding: 0 16px;
+    max-width: 1280px; margin: 0 auto 36px; text-align: center; padding: 0 16px;
   }
   .header h1 {
-    margin: 0 0 12px 0;
-    font-size: clamp(28px, 4.5vw, 44px);
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: #0f172a;
+    margin: 0 0 12px 0; font-size: clamp(28px, 4.5vw, 44px);
+    font-weight: 800; letter-spacing: -0.02em; color: #0f172a;
   }
   .header h1 .accent { color: #fc8019; }
-  .header p {
-    margin: 0 0 8px 0;
-    color: #475569;
-    font-size: clamp(15px, 1.8vw, 18px);
-    line-height: 1.5;
-  }
+  .header p { margin: 0 0 8px 0; color: #475569; font-size: clamp(15px, 1.8vw, 18px); line-height: 1.5; }
   .header .hint {
-    display: inline-block;
-    margin-top: 14px;
-    padding: 6px 14px;
-    background: #fff7ed;
-    color: #9a3412;
-    border: 1px solid #fed7aa;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 600;
+    display: inline-block; margin-top: 14px;
+    padding: 6px 14px; background: #fff7ed; color: #9a3412;
+    border: 1px solid #fed7aa; border-radius: 999px;
+    font-size: 13px; font-weight: 600;
   }
 
   /* ── Stage / panels ───────────────────────────────────────────────── */
   .stage {
-    max-width: 1280px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 24px;
-    padding: 32px;
+    max-width: 1280px; margin: 0 auto;
+    background: white; border-radius: 24px; padding: 32px;
     box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
     border: 1px solid #e2e8f0;
   }
@@ -84,17 +58,13 @@
   @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
 
   .panel {
-    border-radius: 16px;
-    padding: 22px;
-    border: 2px solid;
-    display: flex;
-    flex-direction: column;
+    border-radius: 16px; padding: 22px; border: 2px solid;
+    display: flex; flex-direction: column;
   }
   .panel.before { background: #fef2f2; border-color: #fecaca; }
   .panel.after  { background: #f0fdf4; border-color: #bbf7d0; }
   .panel-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 14px;
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
   }
   .panel-header .left { display: flex; align-items: center; gap: 8px; }
   .panel-header .badge {
@@ -104,27 +74,29 @@
   .before .badge { background: #fee2e2; color: #b91c1c; }
   .after  .badge { background: #dcfce7; color: #15803d; }
   .panel-header .title { font-size: 14px; font-weight: 700; color: #4b5563; }
-  .cart-pill {
-    background: white; border: 1px solid #bbf7d0; color: #15803d;
-    font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 999px;
-    display: flex; align-items: center; gap: 6px; cursor: pointer;
-    transition: transform 0.12s, background 0.12s;
-  }
-  .cart-pill:hover { background: #dcfce7; transform: translateY(-1px); }
-  .cart-pill.bump { animation: bump 0.5s; }
-  @keyframes bump { 0%,100% { transform: scale(1); } 30% { transform: scale(1.18); } }
 
-  .chat {
-    background: white;
-    border-radius: 12px;
-    padding: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    flex: 1;
-    min-height: 540px;
-    display: flex;
-    flex-direction: column;
+  .reset-btn {
+    background: white; border: 1px solid #bbf7d0; color: #15803d;
+    font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px;
+    cursor: pointer; display: flex; align-items: center; gap: 6px;
+    transition: background 0.12s;
   }
-  .msg { margin-bottom: 14px; }
+  .reset-btn:hover { background: #dcfce7; }
+
+  /* ── Chat area ─────────────────────────────────────────────────────── */
+  .chat {
+    background: white; border-radius: 12px; padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    flex: 1; min-height: 540px; max-height: 640px;
+    overflow-y: auto; scroll-behavior: smooth;
+  }
+  .chat::-webkit-scrollbar { width: 8px; }
+  .chat::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
+  .chat::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+
+  .msg { margin-bottom: 14px; animation: msgIn 0.32s cubic-bezier(0.2, 0.7, 0.3, 1.1); }
+  @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
   .msg.user { display: flex; justify-content: flex-end; }
   .msg.user .bubble {
     background: #dbeafe; color: #1e3a8a; padding: 8px 14px;
@@ -133,97 +105,108 @@
   .msg.bot .bubble {
     background: #f3f4f6; color: #1f1f1f; padding: 12px 14px;
     border-radius: 18px 18px 18px 4px; font-size: 13px; line-height: 1.55;
+    max-width: 90%;
   }
   .msg.bot .bubble.list ol { margin: 6px 0 0 18px; padding: 0; }
   .msg.bot .bubble.list li { margin: 6px 0; }
   .msg.bot .bubble.list ul { margin: 4px 0 0 16px; padding: 0; color: #6b7280; }
+  .msg.bot.widget-msg .bubble { padding: 4px; background: transparent; }
 
-  /* ── Widget views (the interactive part) ──────────────────────────── */
-  .widget-shell {
-    flex: 1;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 8px 0;
+  .typing { color: #9ca3af; font-size: 13px; padding: 0 14px; margin-bottom: 14px; }
+  .typing .dots span {
+    display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #9ca3af;
+    margin: 0 1px; animation: typing 1.2s infinite ease-in-out;
   }
-  .view {
-    width: 100%;
-    max-width: 340px;
-    transition: opacity 0.25s;
-  }
-  .view.hidden { display: none; }
+  .typing .dots span:nth-child(2) { animation-delay: 0.15s; }
+  .typing .dots span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes typing { 0%,100%{ opacity: 0.3; } 50%{ opacity: 1; } }
 
-  /* Card view */
-  .widget {
-    background: white;
-    border-radius: 14px;
-    overflow: hidden;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-    border: 1px solid #e5e7eb;
+  /* ── Suggested actions (the chip-style buttons under bot replies) ── */
+  .suggestions {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 10px 14px 0 14px;
+  }
+  .suggestion {
+    background: white; color: #4b5563; border: 1px solid #d1d5db;
+    padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.12s;
+  }
+  .suggestion:hover { background: #f9fafb; border-color: #9ca3af; color: #1f2937; }
+
+  /* ── Widgets (rendered inside bot messages) ───────────────────────── */
+  .widget, .form-card, .cart-card, .receipt-card {
+    background: white; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;
+    width: 320px; max-width: 100%;
   }
   .widget .hero {
-    height: 110px;
+    height: 100px;
     background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 50px;
+    display: flex; align-items: center; justify-content: center; font-size: 46px;
   }
-  .widget .body { padding: 16px 18px 20px; }
-  .widget h3 { margin: 0 0 4px 0; font-size: 19px; }
-  .widget .cuisine { color: #6b7280; font-size: 13px; margin: 0 0 12px 0; }
-  .widget .pills { display: flex; gap: 6px; margin-bottom: 14px; }
-  .widget .pill { padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .widget .body { padding: 14px 16px 16px; }
+  .widget h3 { margin: 0 0 4px 0; font-size: 17px; }
+  .widget .cuisine { color: #6b7280; font-size: 12px; margin: 0 0 10px 0; }
+  .widget .pills { display: flex; gap: 6px; margin-bottom: 12px; }
+  .widget .pill { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
   .widget .pill.rating { background: #dcfce7; color: #15803d; }
   .widget .pill.eta    { background: #fef3c7; color: #b45309; }
   .widget .pill.price  { background: #ede9fe; color: #5b21b6; }
-  .btn-primary {
-    display: block; width: 100%; padding: 11px;
-    background: #fc8019; color: white; border: 0; border-radius: 8px;
-    font-weight: 700; font-size: 14px; cursor: pointer;
-    transition: background 0.15s, transform 0.05s;
-  }
-  .btn-primary:hover { background: #e06d10; }
-  .btn-primary:active { transform: scale(0.98); }
-  .btn-primary:disabled { background: #d1d5db; cursor: not-allowed; transform: none; }
-  .btn-ghost {
-    display: block; width: 100%; padding: 9px;
-    background: transparent; color: #6b7280; border: 1px solid #e5e7eb; border-radius: 8px;
-    font-weight: 600; font-size: 13px; cursor: pointer; margin-top: 8px;
-  }
-  .btn-ghost:hover { background: #f9fafb; color: #1f2937; }
 
-  /* Order form view */
-  .form-card {
-    background: white; border-radius: 14px; padding: 18px 20px 20px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;
-  }
-  .form-card h3 { margin: 0 0 4px 0; font-size: 17px; }
-  .form-card .sub { color: #6b7280; font-size: 12px; margin: 0 0 12px 0; }
+  .form-card { padding: 16px 18px 16px; }
+  .form-card h3 { margin: 0 0 4px 0; font-size: 15px; }
+  .form-card .sub { color: #6b7280; font-size: 11px; margin: 0 0 10px 0; }
   .form-card .item {
     display: flex; align-items: center; gap: 10px;
-    padding: 9px 0; border-bottom: 1px solid #f3f4f6; cursor: pointer;
-    user-select: none;
+    padding: 8px 0; border-bottom: 1px solid #f3f4f6; cursor: pointer; user-select: none;
   }
   .form-card .item:last-of-type { border-bottom: none; }
   .form-card .item input { margin: 0; cursor: pointer; }
   .form-card .item .label { flex: 1; font-size: 13px; }
   .form-card .item .price { color: #4b5563; font-weight: 600; font-size: 12px; }
-  .form-card .total { margin: 14px 0 12px; font-weight: 700; font-size: 15px; display: flex; justify-content: space-between; }
+  .form-card .total { margin: 12px 0 10px; font-weight: 700; font-size: 14px; display: flex; justify-content: space-between; }
 
-  /* Cart view */
-  .cart-card {
-    background: white; border-radius: 14px; padding: 18px 20px 20px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;
+  .cart-card { padding: 16px 18px 16px; }
+  .cart-card h3 { margin: 0 0 12px 0; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+  .cart-card .empty { text-align: center; color: #9ca3af; padding: 20px 0; }
+  .cart-card .row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 12px; }
+  .cart-card .row.subtotal {
+    font-weight: 600; color: #6b7280; padding-top: 8px;
+    border-top: 1px dashed #e5e7eb; margin-top: 4px;
   }
-  .cart-card h3 { margin: 0 0 14px 0; font-size: 17px; display: flex; align-items: center; gap: 6px; }
-  .cart-card .empty { text-align: center; color: #9ca3af; padding: 36px 0; }
-  .cart-card .empty .icon { font-size: 40px; margin-bottom: 10px; }
-  .cart-card .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; }
   .cart-card .grand {
-    margin-top: 14px; padding-top: 12px; border-top: 2px solid #1f2937;
-    display: flex; justify-content: space-between; font-weight: 800; font-size: 15px;
+    margin: 12px 0 12px; padding-top: 10px; border-top: 2px solid #1f2937;
+    display: flex; justify-content: space-between; font-weight: 800; font-size: 14px;
   }
 
-  /* Captions */
+  .receipt-card { padding: 18px 20px 18px; text-align: center; }
+  .receipt-card .icon { font-size: 42px; }
+  .receipt-card h3 { margin: 6px 0 4px 0; font-size: 17px; }
+  .receipt-card .conf { color: #6b7280; font-size: 12px; margin: 0 0 10px 0; }
+  .receipt-card .order-id {
+    font-family: ui-monospace, 'SF Mono', Monaco, monospace;
+    font-size: 13px; padding: 4px 10px; background: #f3f4f6; border-radius: 6px;
+    display: inline-block; margin: 0 0 10px 0;
+  }
+  .receipt-card .eta-row {
+    color: #15803d; font-size: 13px; font-weight: 600; padding: 8px;
+    background: #dcfce7; border-radius: 8px; margin-top: 8px;
+  }
+
+  /* Buttons inside widgets */
+  .btn-primary {
+    display: block; width: 100%; padding: 10px;
+    background: #fc8019; color: white; border: 0; border-radius: 8px;
+    font-weight: 700; font-size: 13px; cursor: pointer;
+    transition: background 0.15s, transform 0.05s;
+    margin-top: 4px;
+  }
+  .btn-primary:hover { background: #e06d10; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { background: #d1d5db; cursor: not-allowed; transform: none; }
+  .btn-success { background: #22c55e; }
+  .btn-success:hover { background: #16a34a; }
+
   .caption {
     margin-top: 16px; font-size: 14px; font-weight: 600;
     padding: 10px 14px; border-radius: 10px; text-align: center;
@@ -234,12 +217,12 @@
   /* ── Tool-call toast ──────────────────────────────────────────────── */
   .toast-host {
     position: fixed; bottom: 24px; left: 50%;
-    transform: translateX(-50%) translateY(140px);
+    transform: translateX(-50%) translateY(160px);
     background: #0f172a; color: #e5e7eb;
     padding: 14px 18px; border-radius: 12px;
     font-size: 13px; line-height: 1.5;
     box-shadow: 0 12px 36px rgba(0,0,0,0.25);
-    transition: transform 0.32s ease;
+    transition: transform 0.32s cubic-bezier(0.2, 0.7, 0.3, 1.1);
     z-index: 100;
     max-width: min(90vw, 600px);
     font-family: ui-monospace, 'SF Mono', Monaco, monospace;
@@ -250,10 +233,7 @@
     color: #22c55e; font-size: 11px; font-weight: 700; letter-spacing: 1px;
     text-transform: uppercase; margin-bottom: 6px; display: block;
   }
-  .toast-host code {
-    background: rgba(255,255,255,0.08); padding: 2px 6px;
-    border-radius: 4px; color: #fff;
-  }
+  .toast-host code { background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: #fff; }
 
   /* ── Footer ────────────────────────────────────────────────────────── */
   .footer {
@@ -263,7 +243,7 @@
   .footer a { color: #2563eb; text-decoration: none; font-weight: 500; }
   .footer a:hover { text-decoration: underline; }
   .footer .links-row { margin-bottom: 8px; }
-  .footer .meta { font-size: 12px; color: #9ca3af; }
+  .footer .meta { font-size: 12px; color: #9ca3af; max-width: 700px; margin: 0 auto; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -279,8 +259,8 @@
 
   <header class="header">
     <h1>What if AI tools returned <span class="accent">interactive widgets</span> instead of text?</h1>
-    <p>This is what <a href="https://mcpui.dev" target="_blank" style="color:#2563eb;text-decoration:none">MCP-UI</a> enables. Compare a wall of markdown with a real, interactive UI &mdash; rendered inline by the AI client.</p>
-    <div class="hint">→ Click around in the green panel</div>
+    <p>This is what <a href="https://mcpui.dev" target="_blank" style="color:#2563eb;text-decoration:none">MCP-UI</a> enables. Compare a wall of markdown with a real conversation that flows through clickable widgets.</p>
+    <div class="hint">→ Click around in the green panel — go all the way through "Place Order"</div>
   </header>
 
   <div class="stage">
@@ -291,10 +271,10 @@
         <div class="panel-header">
           <div class="left">
             <span class="badge">BEFORE</span>
-            <span class="title">Text response</span>
+            <span class="title">Text-only response</span>
           </div>
         </div>
-        <div class="chat">
+        <div class="chat" id="beforeChat">
           <div class="msg user"><div class="bubble">show me restaurants near me</div></div>
           <div class="msg bot">
             <div class="bubble list">
@@ -313,17 +293,24 @@
                     <li>Dragon Roll ($16.99)</li>
                   </ul>
                 </li>
-                <li><b>Curry House</b> (Indian) &mdash; ★ 4.6 / 30 min / $
-                  <ul>
-                    <li>Butter Chicken ($13.99)</li>
-                  </ul>
-                </li>
               </ol>
-              <em>Which one would you like to order from, and which items?</em>
+              <em>Which one would you like to order from?</em>
+            </div>
+          </div>
+          <div class="msg user"><div class="bubble">Pizza Paradiso. I want a Margherita and a Pepperoni.</div></div>
+          <div class="msg bot">
+            <div class="bubble">
+              Got it. Margherita ($12.99) and Pepperoni ($14.99). That's $27.98. Should I place the order?
+            </div>
+          </div>
+          <div class="msg user"><div class="bubble">yes</div></div>
+          <div class="msg bot">
+            <div class="bubble">
+              I can't actually place orders &mdash; I don't have integration with the restaurant. You'd need to use Swiggy / Zomato / their app directly.
             </div>
           </div>
         </div>
-        <div class="caption">Wall of markdown.&nbsp; Slow to scan.&nbsp; Can&rsquo;t tap.</div>
+        <div class="caption">Wall of markdown, then back-and-forth typing.&nbsp; No real action.</div>
       </div>
 
       <!-- AFTER -->
@@ -331,56 +318,12 @@
         <div class="panel-header">
           <div class="left">
             <span class="badge">AFTER</span>
-            <span class="title">Rendered widget</span>
+            <span class="title">Conversation with widgets</span>
           </div>
-          <div class="cart-pill" id="cartPill" onclick="goCart()">🛒 <span id="cartCount">0</span></div>
+          <button class="reset-btn" onclick="resetChat()" title="Restart the conversation">↺ Restart</button>
         </div>
-        <div class="chat">
-          <div class="msg user"><div class="bubble">show me restaurants near me</div></div>
-          <div class="widget-shell">
-
-            <!-- VIEW 1: Card -->
-            <div class="view" id="viewCard">
-              <div class="widget">
-                <div class="hero">🍕</div>
-                <div class="body">
-                  <h3>Pizza Paradiso</h3>
-                  <p class="cuisine">Italian cuisine</p>
-                  <div class="pills">
-                    <span class="pill rating">★ 4.5</span>
-                    <span class="pill eta">⏱ 25 min</span>
-                    <span class="pill price">$$</span>
-                  </div>
-                  <button class="btn-primary" onclick="goForm()">View Menu →</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- VIEW 2: Order form -->
-            <div class="view hidden" id="viewForm">
-              <div class="form-card">
-                <h3>Pizza Paradiso</h3>
-                <p class="sub">Pick items, then add to cart:</p>
-                <div id="itemList"></div>
-                <div class="total">Total: <span id="formTotal">$0.00</span></div>
-                <button class="btn-primary" id="addBtn" onclick="onAddToCart()" disabled>Add to Cart</button>
-                <button class="btn-ghost" onclick="goCard()">← Back to restaurant</button>
-              </div>
-            </div>
-
-            <!-- VIEW 3: Cart -->
-            <div class="view hidden" id="viewCart">
-              <div class="cart-card">
-                <h3>🛒 Your Cart</h3>
-                <div id="cartContents"></div>
-                <button class="btn-ghost" onclick="goCard()" style="margin-top:14px">← Continue browsing</button>
-                <button class="btn-ghost" onclick="onClearCart()">Clear cart</button>
-              </div>
-            </div>
-
-          </div>
-        </div>
-        <div class="caption">Rendered widget.&nbsp; Instant scan.&nbsp; Tap to act.</div>
+        <div class="chat" id="afterChat"></div>
+        <div class="caption">Real conversation. Real widgets. Real actions.</div>
       </div>
 
     </div>
@@ -395,7 +338,7 @@
       <a href="https://mcpui.dev" target="_blank">MCP-UI project</a>
     </div>
     <div class="meta">
-      Each click here mocks the equivalent MCP tool call (shown in the toast). The real demo wires this through Claude Desktop &mdash; clicks invoke server tools directly via Pattern B, no LLM round-trip.
+      Each click in the green panel mocks the equivalent MCP tool call (shown briefly in the toast at the bottom). The real demo wires this through Claude Desktop &mdash; widget clicks invoke server tools directly via Pattern B (no LLM round-trip).
     </div>
   </div>
 
@@ -405,7 +348,9 @@
   </div>
 
   <script>
-    // ── Mock data (mirrors the real demo's restaurants[r1]) ───────────
+    /* ────────────────────────────────────────────────────────────────
+       Mock data + state
+       ──────────────────────────────────────────────────────────────── */
     const MENU = [
       { name: 'Margherita Pizza', price: 12.99, emoji: '🍕' },
       { name: 'Pepperoni Pizza',  price: 14.99, emoji: '🍕' },
@@ -413,115 +358,233 @@
       { name: 'Tiramisu',         price: 7.99,  emoji: '🍰' },
     ];
     const RESTAURANT_ID = 'r1';
+    const RESTAURANT_NAME = 'Pizza Paradiso';
 
-    // ── State ─────────────────────────────────────────────────────────
     let cart = [];
+    let formMsgId = 0;     // increments to make each form's input ids unique
+    let lastSuggestionEl = null;
 
-    // ── View routing ──────────────────────────────────────────────────
-    function showView(id, toolCall) {
-      ['viewCard', 'viewForm', 'viewCart'].forEach(v => {
-        document.getElementById(v).classList.toggle('hidden', v !== id);
+    /* ────────────────────────────────────────────────────────────────
+       Chat helpers — append messages, scroll, suggestions
+       ──────────────────────────────────────────────────────────────── */
+    const chat = () => document.getElementById('afterChat');
+
+    function addUserMsg(text) {
+      removeSuggestions();
+      const msg = document.createElement('div');
+      msg.className = 'msg user';
+      msg.innerHTML = `<div class="bubble">${text}</div>`;
+      chat().appendChild(msg);
+      scrollToBottom();
+    }
+
+    async function addBotMsg(htmlOrWidget, opts = {}) {
+      // Show typing indicator briefly
+      const typing = document.createElement('div');
+      typing.className = 'typing';
+      typing.innerHTML = `Claude <span class="dots"><span></span><span></span><span></span></span>`;
+      chat().appendChild(typing);
+      scrollToBottom();
+      await sleep(opts.delay ?? 600);
+      typing.remove();
+
+      const msg = document.createElement('div');
+      msg.className = 'msg bot' + (opts.widget ? ' widget-msg' : '');
+      msg.innerHTML = `<div class="bubble">${htmlOrWidget}</div>`;
+      chat().appendChild(msg);
+      scrollToBottom();
+      return msg;
+    }
+
+    function addSuggestions(items) {
+      removeSuggestions();
+      const wrap = document.createElement('div');
+      wrap.className = 'suggestions';
+      items.forEach(it => {
+        const b = document.createElement('button');
+        b.className = 'suggestion';
+        b.textContent = it.label;
+        b.onclick = () => { it.onClick(); };
+        wrap.appendChild(b);
       });
-      if (toolCall) showToast(toolCall);
-    }
-    function goCard()  { showView('viewCard', null); }
-    function goForm()  {
-      renderForm();
-      showView('viewForm', 'show_order_form({ restaurantId: \"r1\" })');
-    }
-    function goCart()  {
-      renderCart();
-      showView('viewCart', 'view_cart()');
+      chat().appendChild(wrap);
+      lastSuggestionEl = wrap;
+      scrollToBottom();
     }
 
-    // ── Form view ─────────────────────────────────────────────────────
-    function renderForm() {
-      const list = document.getElementById('itemList');
-      list.innerHTML = '';
+    function removeSuggestions() {
+      if (lastSuggestionEl && lastSuggestionEl.parentElement) lastSuggestionEl.remove();
+      lastSuggestionEl = null;
+    }
+
+    function scrollToBottom() {
+      setTimeout(() => { chat().scrollTop = chat().scrollHeight; }, 30);
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    /* ────────────────────────────────────────────────────────────────
+       Conversation flow steps
+       ──────────────────────────────────────────────────────────────── */
+
+    async function step0_init() {
+      cart = [];
+      chat().innerHTML = '';
+      addUserMsg('show me restaurants near me');
+      const cardHTML = `
+        <div class="widget">
+          <div class="hero">🍕</div>
+          <div class="body">
+            <h3>${RESTAURANT_NAME}</h3>
+            <p class="cuisine">Italian cuisine</p>
+            <div class="pills">
+              <span class="pill rating">★ 4.5</span>
+              <span class="pill eta">⏱ 25 min</span>
+              <span class="pill price">$$</span>
+            </div>
+            <button class="btn-primary" onclick="step1_viewMenu()">View Menu →</button>
+          </div>
+        </div>`;
+      await addBotMsg(cardHTML, { widget: true, delay: 350 });
+      showToast('show_restaurant_card({ restaurantId: "r1" })');
+    }
+
+    async function step1_viewMenu() {
+      addUserMsg('view the menu');
+      showToast('show_order_form({ restaurantId: "r1" })');
+      formMsgId++;
+      const formId = 'form-' + formMsgId;
+      const formHTML = `
+        <div class="form-card" id="${formId}">
+          <h3>${RESTAURANT_NAME}</h3>
+          <p class="sub">Pick items, then add to cart:</p>
+          <div class="form-items"></div>
+          <div class="total">Total: <span class="total-val">$0.00</span></div>
+          <button class="btn-primary add-btn" disabled>Add to Cart</button>
+        </div>`;
+      await addBotMsg(formHTML, { widget: true });
+      mountForm(formId);
+    }
+
+    function mountForm(formId) {
+      const form = document.getElementById(formId);
+      const itemsHost = form.querySelector('.form-items');
+      const totalEl = form.querySelector('.total-val');
+      const addBtn = form.querySelector('.add-btn');
+
       MENU.forEach((it, i) => {
         const lab = document.createElement('label');
         lab.className = 'item';
         lab.innerHTML = `
-          <input type="checkbox" data-i="${i}" onchange="recalc()">
+          <input type="checkbox" data-i="${i}">
           <span class="label">${it.emoji} ${it.name}</span>
           <span class="price">$${it.price.toFixed(2)}</span>`;
-        list.appendChild(lab);
+        itemsHost.appendChild(lab);
       });
-      document.getElementById('formTotal').textContent = '$0.00';
-      document.getElementById('addBtn').disabled = true;
-      document.getElementById('addBtn').textContent = 'Add to Cart';
-      document.getElementById('addBtn').classList.remove('added');
+
+      const recalc = () => {
+        const inputs = itemsHost.querySelectorAll('input[type="checkbox"]');
+        let total = 0, count = 0;
+        inputs.forEach(i => { if (i.checked) { total += MENU[+i.dataset.i].price; count++; } });
+        totalEl.textContent = '$' + total.toFixed(2);
+        addBtn.disabled = count === 0;
+      };
+      itemsHost.querySelectorAll('input[type="checkbox"]').forEach(i => i.addEventListener('change', recalc));
+
+      addBtn.addEventListener('click', () => {
+        const inputs = itemsHost.querySelectorAll('input[type="checkbox"]');
+        const selected = [];
+        inputs.forEach(i => { if (i.checked) selected.push(MENU[+i.dataset.i]); });
+        if (selected.length === 0) return;
+        // Disable form so user can't double-add
+        inputs.forEach(i => i.disabled = true);
+        addBtn.disabled = true;
+        addBtn.textContent = 'Added ✓';
+        addBtn.classList.add('btn-success');
+        step2_addToCart(selected);
+      });
     }
 
-    function recalc() {
-      const inputs = document.querySelectorAll('#itemList input[type="checkbox"]');
-      let total = 0, count = 0;
-      inputs.forEach(i => { if (i.checked) { total += MENU[+i.dataset.i].price; count++; } });
-      document.getElementById('formTotal').textContent = '$' + total.toFixed(2);
-      document.getElementById('addBtn').disabled = count === 0;
-    }
+    async function step2_addToCart(selected) {
+      const list = selected.map(s => s.name).join(' & ');
+      addUserMsg(`add ${list} to my cart`);
 
-    function onAddToCart() {
-      const inputs = document.querySelectorAll('#itemList input[type="checkbox"]');
-      const selected = [];
-      inputs.forEach(i => { if (i.checked) selected.push(MENU[+i.dataset.i]); });
-      if (selected.length === 0) return;
-
-      // Append to cart state
+      // Mutate cart
       selected.forEach(it => cart.push({ ...it, restaurantId: RESTAURANT_ID }));
-      bumpCartPill();
+      const total = cart.reduce((s, l) => s + l.price, 0);
 
-      // Visual feedback
-      const btn = document.getElementById('addBtn');
-      btn.disabled = true;
-      btn.textContent = 'Added ✓';
-      btn.style.background = '#22c55e';
-      setTimeout(() => {
-        btn.style.background = '';
-        renderForm();
-      }, 1400);
-
-      // Fire the toast — show what the equivalent MCP tool call looks like
       const itemsArg = selected.map(s => `{name:"${s.name}",price:${s.price}}`).join(', ');
-      showToast(`add_to_cart({ restaurantId: \"${RESTAURANT_ID}\", items: [${itemsArg}] })`);
+      showToast(`add_to_cart({ restaurantId: "r1", items: [${itemsArg}] })`);
+
+      const replyHTML = `Added <b>${selected.length}</b> item${selected.length === 1 ? '' : 's'} to your cart from ${RESTAURANT_NAME}. Cart now has <b>${cart.length}</b> item${cart.length === 1 ? '' : 's'}, total <b>$${total.toFixed(2)}</b>.`;
+      await addBotMsg(replyHTML);
+      addSuggestions([
+        { label: '🛒 Show my cart',  onClick: step3_showCart },
+        { label: '➕ Add more items', onClick: step1_viewMenu },
+      ]);
     }
 
-    // ── Cart view ─────────────────────────────────────────────────────
-    function renderCart() {
-      const el = document.getElementById('cartContents');
+    async function step3_showCart() {
+      addUserMsg('show my cart');
+      showToast('view_cart()');
+      let inner;
       if (cart.length === 0) {
-        el.innerHTML = `<div class="empty"><div class="icon">🛒</div><div>Your cart is empty</div><p style="margin:6px 0 0;font-size:12px">Pick items from the order form first.</p></div>`;
-        return;
+        inner = `<div class="empty">🛒<br/>Your cart is empty.</div>`;
+      } else {
+        const byRest = {};
+        cart.forEach(l => { (byRest[l.restaurantId] ??= []).push(l); });
+        let rows = '';
+        for (const [rid, items] of Object.entries(byRest)) {
+          let sub = 0;
+          items.forEach(l => {
+            rows += `<div class="row"><span>${l.emoji} ${l.name}</span><span>$${l.price.toFixed(2)}</span></div>`;
+            sub += l.price;
+          });
+          rows += `<div class="row subtotal"><span>${RESTAURANT_NAME}</span><span>$${sub.toFixed(2)}</span></div>`;
+        }
+        const total = cart.reduce((s, l) => s + l.price, 0);
+        inner = rows + `<div class="grand"><span>Total</span><span>$${total.toFixed(2)}</span></div>
+          <button class="btn-primary" onclick="step4_placeOrder()">Place Order</button>`;
       }
-      let html = '';
-      let total = 0;
-      cart.forEach(it => {
-        html += `<div class="row"><span>${it.emoji} ${it.name}</span><span>$${it.price.toFixed(2)}</span></div>`;
-        total += it.price;
-      });
-      html += `<div class="grand"><span>Total</span><span>$${total.toFixed(2)}</span></div>`;
-      el.innerHTML = html;
+      const cartHTML = `
+        <div class="cart-card">
+          <h3>🛒 Your Cart</h3>
+          ${inner}
+        </div>`;
+      await addBotMsg(cartHTML, { widget: true });
+      if (cart.length === 0) {
+        addSuggestions([{ label: '➕ Browse menu', onClick: step1_viewMenu }]);
+      }
     }
 
-    function onClearCart() {
+    async function step4_placeOrder() {
+      addUserMsg('place my order');
+      showToast('place_order({ cart: [...], total: $' + cart.reduce((s,l)=>s+l.price,0).toFixed(2) + ' })');
+      const total = cart.reduce((s, l) => s + l.price, 0);
+      const id = 'DEMO-' + Math.random().toString(36).slice(2, 7).toUpperCase();
+      const receiptHTML = `
+        <div class="receipt-card">
+          <div class="icon">🎉</div>
+          <h3>Order placed!</h3>
+          <p class="conf">Confirmation</p>
+          <div class="order-id">${id}</div>
+          <div class="row" style="text-align:left;justify-content:space-between"><span>${cart.length} item${cart.length===1?'':'s'} from ${RESTAURANT_NAME}</span><span>$${total.toFixed(2)}</span></div>
+          <div class="eta-row">⏱ Estimated delivery: 25 minutes</div>
+        </div>`;
+      await addBotMsg(receiptHTML, { widget: true });
+      // Clear cart for next round
       cart = [];
-      bumpCartPill();
-      renderCart();
-      showToast(`clear_cart()`);
+      addSuggestions([
+        { label: '↺ Order again', onClick: step1_viewMenu },
+        { label: '🛒 View cart',   onClick: step3_showCart },
+      ]);
     }
 
-    // ── Cart pill ─────────────────────────────────────────────────────
-    function bumpCartPill() {
-      const c = document.getElementById('cartCount');
-      const pill = document.getElementById('cartPill');
-      c.textContent = cart.length;
-      pill.classList.remove('bump');
-      // restart animation
-      void pill.offsetWidth;
-      pill.classList.add('bump');
-    }
+    /* ────────────────────────────────────────────────────────────────
+       Reset + toast
+       ──────────────────────────────────────────────────────────────── */
+    function resetChat() { step0_init(); }
 
-    // ── Toast ────────────────────────────────────────────────────────
     let toastTimer;
     function showToast(call) {
       const t = document.getElementById('toast');
@@ -530,6 +593,9 @@
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => { t.classList.remove('show'); }, 2600);
     }
+
+    // Boot
+    step0_init();
   </script>
 </body>
 </html>
