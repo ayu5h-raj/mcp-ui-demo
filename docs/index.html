@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP-UI: Before vs After — interactive demo</title>
+<meta name="description" content="What changes when an AI tool returns a real interactive widget instead of a wall of markdown. Click to feel the difference.">
+<meta property="og:title" content="MCP-UI: Before vs After">
+<meta property="og:description" content="Interactive demo of AI tools returning rendered widgets instead of text.">
+<meta property="og:type" content="website">
+<style>
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    color: #1f2937;
+    min-height: 100vh;
+    padding: 32px 16px 80px;
+  }
+
+  /* ── Header ────────────────────────────────────────────────────────── */
+  .topnav {
+    max-width: 1280px;
+    margin: 0 auto 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .topnav .brand {
+    font-weight: 700; font-size: 14px; color: #4b5563;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .topnav .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: #fc8019; }
+  .topnav .links { display: flex; gap: 18px; font-size: 13px; }
+  .topnav a { color: #4b5563; text-decoration: none; font-weight: 500; }
+  .topnav a:hover { color: #1f2937; text-decoration: underline; }
+
+  .header {
+    max-width: 1280px;
+    margin: 0 auto 36px;
+    text-align: center;
+    padding: 0 16px;
+  }
+  .header h1 {
+    margin: 0 0 12px 0;
+    font-size: clamp(28px, 4.5vw, 44px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #0f172a;
+  }
+  .header h1 .accent { color: #fc8019; }
+  .header p {
+    margin: 0 0 8px 0;
+    color: #475569;
+    font-size: clamp(15px, 1.8vw, 18px);
+    line-height: 1.5;
+  }
+  .header .hint {
+    display: inline-block;
+    margin-top: 14px;
+    padding: 6px 14px;
+    background: #fff7ed;
+    color: #9a3412;
+    border: 1px solid #fed7aa;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* ── Stage / panels ───────────────────────────────────────────────── */
+  .stage {
+    max-width: 1280px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+    border: 1px solid #e2e8f0;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .panel {
+    border-radius: 16px;
+    padding: 22px;
+    border: 2px solid;
+    display: flex;
+    flex-direction: column;
+  }
+  .panel.before { background: #fef2f2; border-color: #fecaca; }
+  .panel.after  { background: #f0fdf4; border-color: #bbf7d0; }
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .panel-header .left { display: flex; align-items: center; gap: 8px; }
+  .panel-header .badge {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    padding: 4px 10px; border-radius: 6px;
+  }
+  .before .badge { background: #fee2e2; color: #b91c1c; }
+  .after  .badge { background: #dcfce7; color: #15803d; }
+  .panel-header .title { font-size: 14px; font-weight: 700; color: #4b5563; }
+  .cart-pill {
+    background: white; border: 1px solid #bbf7d0; color: #15803d;
+    font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 999px;
+    display: flex; align-items: center; gap: 6px; cursor: pointer;
+    transition: transform 0.12s, background 0.12s;
+  }
+  .cart-pill:hover { background: #dcfce7; transform: translateY(-1px); }
+  .cart-pill.bump { animation: bump 0.5s; }
+  @keyframes bump { 0%,100% { transform: scale(1); } 30% { transform: scale(1.18); } }
+
+  .chat {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    flex: 1;
+    min-height: 540px;
+    display: flex;
+    flex-direction: column;
+  }
+  .msg { margin-bottom: 14px; }
+  .msg.user { display: flex; justify-content: flex-end; }
+  .msg.user .bubble {
+    background: #dbeafe; color: #1e3a8a; padding: 8px 14px;
+    border-radius: 18px 18px 4px 18px; font-size: 13px; max-width: 80%;
+  }
+  .msg.bot .bubble {
+    background: #f3f4f6; color: #1f1f1f; padding: 12px 14px;
+    border-radius: 18px 18px 18px 4px; font-size: 13px; line-height: 1.55;
+  }
+  .msg.bot .bubble.list ol { margin: 6px 0 0 18px; padding: 0; }
+  .msg.bot .bubble.list li { margin: 6px 0; }
+  .msg.bot .bubble.list ul { margin: 4px 0 0 16px; padding: 0; color: #6b7280; }
+
+  /* ── Widget views (the interactive part) ──────────────────────────── */
+  .widget-shell {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 8px 0;
+  }
+  .view {
+    width: 100%;
+    max-width: 340px;
+    transition: opacity 0.25s;
+  }
+  .view.hidden { display: none; }
+
+  /* Card view */
+  .widget {
+    background: white;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    border: 1px solid #e5e7eb;
+  }
+  .widget .hero {
+    height: 110px;
+    background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 50px;
+  }
+  .widget .body { padding: 16px 18px 20px; }
+  .widget h3 { margin: 0 0 4px 0; font-size: 19px; }
+  .widget .cuisine { color: #6b7280; font-size: 13px; margin: 0 0 12px 0; }
+  .widget .pills { display: flex; gap: 6px; margin-bottom: 14px; }
+  .widget .pill { padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .widget .pill.rating { background: #dcfce7; color: #15803d; }
+  .widget .pill.eta    { background: #fef3c7; color: #b45309; }
+  .widget .pill.price  { background: #ede9fe; color: #5b21b6; }
+  .btn-primary {
+    display: block; width: 100%; padding: 11px;
+    background: #fc8019; color: white; border: 0; border-radius: 8px;
+    font-weight: 700; font-size: 14px; cursor: pointer;
+    transition: background 0.15s, transform 0.05s;
+  }
+  .btn-primary:hover { background: #e06d10; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { background: #d1d5db; cursor: not-allowed; transform: none; }
+  .btn-ghost {
+    display: block; width: 100%; padding: 9px;
+    background: transparent; color: #6b7280; border: 1px solid #e5e7eb; border-radius: 8px;
+    font-weight: 600; font-size: 13px; cursor: pointer; margin-top: 8px;
+  }
+  .btn-ghost:hover { background: #f9fafb; color: #1f2937; }
+
+  /* Order form view */
+  .form-card {
+    background: white; border-radius: 14px; padding: 18px 20px 20px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;
+  }
+  .form-card h3 { margin: 0 0 4px 0; font-size: 17px; }
+  .form-card .sub { color: #6b7280; font-size: 12px; margin: 0 0 12px 0; }
+  .form-card .item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 0; border-bottom: 1px solid #f3f4f6; cursor: pointer;
+    user-select: none;
+  }
+  .form-card .item:last-of-type { border-bottom: none; }
+  .form-card .item input { margin: 0; cursor: pointer; }
+  .form-card .item .label { flex: 1; font-size: 13px; }
+  .form-card .item .price { color: #4b5563; font-weight: 600; font-size: 12px; }
+  .form-card .total { margin: 14px 0 12px; font-weight: 700; font-size: 15px; display: flex; justify-content: space-between; }
+
+  /* Cart view */
+  .cart-card {
+    background: white; border-radius: 14px; padding: 18px 20px 20px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;
+  }
+  .cart-card h3 { margin: 0 0 14px 0; font-size: 17px; display: flex; align-items: center; gap: 6px; }
+  .cart-card .empty { text-align: center; color: #9ca3af; padding: 36px 0; }
+  .cart-card .empty .icon { font-size: 40px; margin-bottom: 10px; }
+  .cart-card .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; }
+  .cart-card .grand {
+    margin-top: 14px; padding-top: 12px; border-top: 2px solid #1f2937;
+    display: flex; justify-content: space-between; font-weight: 800; font-size: 15px;
+  }
+
+  /* Captions */
+  .caption {
+    margin-top: 16px; font-size: 14px; font-weight: 600;
+    padding: 10px 14px; border-radius: 10px; text-align: center;
+  }
+  .panel.before .caption { background: #fee2e2; color: #b91c1c; }
+  .panel.after  .caption { background: #dcfce7; color: #15803d; }
+
+  /* ── Tool-call toast ──────────────────────────────────────────────── */
+  .toast-host {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(140px);
+    background: #0f172a; color: #e5e7eb;
+    padding: 14px 18px; border-radius: 12px;
+    font-size: 13px; line-height: 1.5;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.25);
+    transition: transform 0.32s ease;
+    z-index: 100;
+    max-width: min(90vw, 600px);
+    font-family: ui-monospace, 'SF Mono', Monaco, monospace;
+  }
+  .toast-host.show { transform: translateX(-50%) translateY(0); }
+  .toast-host .label {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #22c55e; font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 6px; display: block;
+  }
+  .toast-host code {
+    background: rgba(255,255,255,0.08); padding: 2px 6px;
+    border-radius: 4px; color: #fff;
+  }
+
+  /* ── Footer ────────────────────────────────────────────────────────── */
+  .footer {
+    max-width: 1280px; margin: 32px auto 0;
+    text-align: center; color: #6b7280; font-size: 13px; padding: 0 16px;
+  }
+  .footer a { color: #2563eb; text-decoration: none; font-weight: 500; }
+  .footer a:hover { text-decoration: underline; }
+  .footer .links-row { margin-bottom: 8px; }
+  .footer .meta { font-size: 12px; color: #9ca3af; }
+</style>
+</head>
+<body>
+
+  <nav class="topnav">
+    <div class="brand"><span class="dot"></span> mcp-ui-demo</div>
+    <div class="links">
+      <a href="https://github.com/ayu5h-raj/mcp-ui-demo" target="_blank">GitHub</a>
+      <a href="https://github.com/ayu5h-raj/mcp-ui-demo/blob/main/docs/how-it-works.md" target="_blank">How it works</a>
+      <a href="https://mcpui.dev" target="_blank">MCP-UI</a>
+    </div>
+  </nav>
+
+  <header class="header">
+    <h1>What if AI tools returned <span class="accent">interactive widgets</span> instead of text?</h1>
+    <p>This is what <a href="https://mcpui.dev" target="_blank" style="color:#2563eb;text-decoration:none">MCP-UI</a> enables. Compare a wall of markdown with a real, interactive UI &mdash; rendered inline by the AI client.</p>
+    <div class="hint">→ Click around in the green panel</div>
+  </header>
+
+  <div class="stage">
+    <div class="grid">
+
+      <!-- BEFORE -->
+      <div class="panel before">
+        <div class="panel-header">
+          <div class="left">
+            <span class="badge">BEFORE</span>
+            <span class="title">Text response</span>
+          </div>
+        </div>
+        <div class="chat">
+          <div class="msg user"><div class="bubble">show me restaurants near me</div></div>
+          <div class="msg bot">
+            <div class="bubble list">
+              Here are some restaurants near you:
+              <ol>
+                <li><b>Pizza Paradiso</b> (Italian) &mdash; ★ 4.5 / 25 min / $$
+                  <ul>
+                    <li>Margherita Pizza ($12.99)</li>
+                    <li>Pepperoni Pizza ($14.99)</li>
+                    <li>Garlic Bread ($5.99)</li>
+                  </ul>
+                </li>
+                <li><b>Sushi Zen</b> (Japanese) &mdash; ★ 4.8 / 35 min / $$$
+                  <ul>
+                    <li>Salmon Nigiri ($8.99)</li>
+                    <li>Dragon Roll ($16.99)</li>
+                  </ul>
+                </li>
+                <li><b>Curry House</b> (Indian) &mdash; ★ 4.6 / 30 min / $
+                  <ul>
+                    <li>Butter Chicken ($13.99)</li>
+                  </ul>
+                </li>
+              </ol>
+              <em>Which one would you like to order from, and which items?</em>
+            </div>
+          </div>
+        </div>
+        <div class="caption">Wall of markdown.&nbsp; Slow to scan.&nbsp; Can&rsquo;t tap.</div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="panel after">
+        <div class="panel-header">
+          <div class="left">
+            <span class="badge">AFTER</span>
+            <span class="title">Rendered widget</span>
+          </div>
+          <div class="cart-pill" id="cartPill" onclick="goCart()">🛒 <span id="cartCount">0</span></div>
+        </div>
+        <div class="chat">
+          <div class="msg user"><div class="bubble">show me restaurants near me</div></div>
+          <div class="widget-shell">
+
+            <!-- VIEW 1: Card -->
+            <div class="view" id="viewCard">
+              <div class="widget">
+                <div class="hero">🍕</div>
+                <div class="body">
+                  <h3>Pizza Paradiso</h3>
+                  <p class="cuisine">Italian cuisine</p>
+                  <div class="pills">
+                    <span class="pill rating">★ 4.5</span>
+                    <span class="pill eta">⏱ 25 min</span>
+                    <span class="pill price">$$</span>
+                  </div>
+                  <button class="btn-primary" onclick="goForm()">View Menu →</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- VIEW 2: Order form -->
+            <div class="view hidden" id="viewForm">
+              <div class="form-card">
+                <h3>Pizza Paradiso</h3>
+                <p class="sub">Pick items, then add to cart:</p>
+                <div id="itemList"></div>
+                <div class="total">Total: <span id="formTotal">$0.00</span></div>
+                <button class="btn-primary" id="addBtn" onclick="onAddToCart()" disabled>Add to Cart</button>
+                <button class="btn-ghost" onclick="goCard()">← Back to restaurant</button>
+              </div>
+            </div>
+
+            <!-- VIEW 3: Cart -->
+            <div class="view hidden" id="viewCart">
+              <div class="cart-card">
+                <h3>🛒 Your Cart</h3>
+                <div id="cartContents"></div>
+                <button class="btn-ghost" onclick="goCard()" style="margin-top:14px">← Continue browsing</button>
+                <button class="btn-ghost" onclick="onClearCart()">Clear cart</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        <div class="caption">Rendered widget.&nbsp; Instant scan.&nbsp; Tap to act.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="links-row">
+      <a href="https://github.com/ayu5h-raj/mcp-ui-demo" target="_blank">View on GitHub</a>
+      &nbsp;·&nbsp;
+      <a href="https://github.com/ayu5h-raj/mcp-ui-demo/blob/main/docs/how-it-works.md" target="_blank">Architecture write-up</a>
+      &nbsp;·&nbsp;
+      <a href="https://mcpui.dev" target="_blank">MCP-UI project</a>
+    </div>
+    <div class="meta">
+      Each click here mocks the equivalent MCP tool call (shown in the toast). The real demo wires this through Claude Desktop &mdash; clicks invoke server tools directly via Pattern B, no LLM round-trip.
+    </div>
+  </div>
+
+  <div class="toast-host" id="toast">
+    <span class="label">MCP tool call</span>
+    <div id="toastBody"></div>
+  </div>
+
+  <script>
+    // ── Mock data (mirrors the real demo's restaurants[r1]) ───────────
+    const MENU = [
+      { name: 'Margherita Pizza', price: 12.99, emoji: '🍕' },
+      { name: 'Pepperoni Pizza',  price: 14.99, emoji: '🍕' },
+      { name: 'Garlic Bread',     price: 5.99,  emoji: '🍞' },
+      { name: 'Tiramisu',         price: 7.99,  emoji: '🍰' },
+    ];
+    const RESTAURANT_ID = 'r1';
+
+    // ── State ─────────────────────────────────────────────────────────
+    let cart = [];
+
+    // ── View routing ──────────────────────────────────────────────────
+    function showView(id, toolCall) {
+      ['viewCard', 'viewForm', 'viewCart'].forEach(v => {
+        document.getElementById(v).classList.toggle('hidden', v !== id);
+      });
+      if (toolCall) showToast(toolCall);
+    }
+    function goCard()  { showView('viewCard', null); }
+    function goForm()  {
+      renderForm();
+      showView('viewForm', 'show_order_form({ restaurantId: \"r1\" })');
+    }
+    function goCart()  {
+      renderCart();
+      showView('viewCart', 'view_cart()');
+    }
+
+    // ── Form view ─────────────────────────────────────────────────────
+    function renderForm() {
+      const list = document.getElementById('itemList');
+      list.innerHTML = '';
+      MENU.forEach((it, i) => {
+        const lab = document.createElement('label');
+        lab.className = 'item';
+        lab.innerHTML = `
+          <input type="checkbox" data-i="${i}" onchange="recalc()">
+          <span class="label">${it.emoji} ${it.name}</span>
+          <span class="price">$${it.price.toFixed(2)}</span>`;
+        list.appendChild(lab);
+      });
+      document.getElementById('formTotal').textContent = '$0.00';
+      document.getElementById('addBtn').disabled = true;
+      document.getElementById('addBtn').textContent = 'Add to Cart';
+      document.getElementById('addBtn').classList.remove('added');
+    }
+
+    function recalc() {
+      const inputs = document.querySelectorAll('#itemList input[type="checkbox"]');
+      let total = 0, count = 0;
+      inputs.forEach(i => { if (i.checked) { total += MENU[+i.dataset.i].price; count++; } });
+      document.getElementById('formTotal').textContent = '$' + total.toFixed(2);
+      document.getElementById('addBtn').disabled = count === 0;
+    }
+
+    function onAddToCart() {
+      const inputs = document.querySelectorAll('#itemList input[type="checkbox"]');
+      const selected = [];
+      inputs.forEach(i => { if (i.checked) selected.push(MENU[+i.dataset.i]); });
+      if (selected.length === 0) return;
+
+      // Append to cart state
+      selected.forEach(it => cart.push({ ...it, restaurantId: RESTAURANT_ID }));
+      bumpCartPill();
+
+      // Visual feedback
+      const btn = document.getElementById('addBtn');
+      btn.disabled = true;
+      btn.textContent = 'Added ✓';
+      btn.style.background = '#22c55e';
+      setTimeout(() => {
+        btn.style.background = '';
+        renderForm();
+      }, 1400);
+
+      // Fire the toast — show what the equivalent MCP tool call looks like
+      const itemsArg = selected.map(s => `{name:"${s.name}",price:${s.price}}`).join(', ');
+      showToast(`add_to_cart({ restaurantId: \"${RESTAURANT_ID}\", items: [${itemsArg}] })`);
+    }
+
+    // ── Cart view ─────────────────────────────────────────────────────
+    function renderCart() {
+      const el = document.getElementById('cartContents');
+      if (cart.length === 0) {
+        el.innerHTML = `<div class="empty"><div class="icon">🛒</div><div>Your cart is empty</div><p style="margin:6px 0 0;font-size:12px">Pick items from the order form first.</p></div>`;
+        return;
+      }
+      let html = '';
+      let total = 0;
+      cart.forEach(it => {
+        html += `<div class="row"><span>${it.emoji} ${it.name}</span><span>$${it.price.toFixed(2)}</span></div>`;
+        total += it.price;
+      });
+      html += `<div class="grand"><span>Total</span><span>$${total.toFixed(2)}</span></div>`;
+      el.innerHTML = html;
+    }
+
+    function onClearCart() {
+      cart = [];
+      bumpCartPill();
+      renderCart();
+      showToast(`clear_cart()`);
+    }
+
+    // ── Cart pill ─────────────────────────────────────────────────────
+    function bumpCartPill() {
+      const c = document.getElementById('cartCount');
+      const pill = document.getElementById('cartPill');
+      c.textContent = cart.length;
+      pill.classList.remove('bump');
+      // restart animation
+      void pill.offsetWidth;
+      pill.classList.add('bump');
+    }
+
+    // ── Toast ────────────────────────────────────────────────────────
+    let toastTimer;
+    function showToast(call) {
+      const t = document.getElementById('toast');
+      document.getElementById('toastBody').innerHTML = `<code>${call}</code>`;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { t.classList.remove('show'); }, 2600);
+    }
+  </script>
+</body>
+</html>

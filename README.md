@@ -1,5 +1,8 @@
 # mcp-ui-demo
 
+> 🎮 **Try the live interactive demo →** https://ayu5h-raj.github.io/mcp-ui-demo/
+> &nbsp;&nbsp;(no install needed; runs in your browser, mocks the equivalent MCP tool call on every click)
+
 A minimal demo of [MCP-UI](https://mcpui.dev/): one TypeScript MCP server, six tools, three rendering modes plus **Pattern B** (iframe → server tool call with no LLM round-trip), inside a sandboxed iframe in the host (Claude Desktop, ui-inspector, etc.).
 
 ## What you get

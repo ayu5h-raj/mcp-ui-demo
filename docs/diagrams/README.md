@@ -1,6 +1,8 @@
 # Diagrams
 
-Three "Old vs New" visualizations — pick whichever fits your audience.
+> 🎮 **Live interactive playground:** https://ayu5h-raj.github.io/mcp-ui-demo/ — click around to feel the difference; each interaction shows the equivalent MCP tool call.
+
+Static visualizations below — pick whichever fits your audience.
 
 ## 1. Excalidraw (hand-drawn / sketchy — best for LinkedIn)
 
