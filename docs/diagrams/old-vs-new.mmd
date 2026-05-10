@@ -1,0 +1,25 @@
+%% MCP-UI: Before vs After
+%% Render this file at https://mermaid.live (paste contents) or via the Mermaid CLI.
+%% Export as PNG/SVG for LinkedIn or any other social.
+
+flowchart LR
+  subgraph BEFORE["💬 BEFORE — text response"]
+    direction TB
+    U1["You<br/><i>show me restaurants near me</i>"]
+    C1["Claude<br/><b>Here are some restaurants near you:</b><br/>1. Pizza Paradiso (Italian)<br/>★ 4.5 / 25 min / $$<br/>- Margherita Pizza ($12.99)<br/>- Pepperoni Pizza ($14.99)<br/>2. Sushi Zen (Japanese)<br/>★ 4.8 / 35 min / $$$<br/>- Salmon Nigiri ($8.99)<br/>3. Curry House (Indian)<br/>...<br/><i>Which one and which items?</i>"]
+    U1 --> C1
+    C1 -. you re-read,<br/>re-type, wait .-> U1
+  end
+
+  subgraph AFTER["✨ AFTER — rendered widget"]
+    direction TB
+    U2["You<br/><i>show me restaurants near me</i>"]
+    C2["Claude<br/>┌─────────────────┐<br/>│ 🍕 hero band   │<br/>│ Pizza Paradiso │<br/>│ Italian cuisine│<br/>│ ★4.5 25min $$  │<br/>│ [Add to Cart]  │<br/>└─────────────────┘"]
+    U2 --> C2
+    C2 -. tap → server tool call<br/>(no LLM round-trip) .-> C2
+  end
+
+  classDef before fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#1f2937
+  classDef after fill:#dcfce7,stroke:#22c55e,stroke-width:2px,color:#1f2937
+  class U1,C1 before
+  class U2,C2 after

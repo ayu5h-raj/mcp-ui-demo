@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MCP-UI: Before vs After</title>
+<style>
+  /* Open this file in a browser, then screenshot the .stage element for LinkedIn (1200×800 ish). */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #f5f5f7;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #1f1f1f;
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    padding: 40px;
+  }
+  .stage {
+    width: 1200px;
+    background: white;
+    border-radius: 24px;
+    padding: 48px 40px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.06);
+  }
+  .header { text-align: center; margin-bottom: 36px; }
+  .header h1 { margin: 0 0 8px 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
+  .header p { margin: 0; color: #6b7280; font-size: 17px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+  .panel {
+    border-radius: 16px;
+    padding: 20px;
+    border: 2px solid;
+  }
+  .panel.before { background: #fef2f2; border-color: #fecaca; }
+  .panel.after  { background: #f0fdf4; border-color: #bbf7d0; }
+  .panel-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .panel-header .badge {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    padding: 4px 10px; border-radius: 6px;
+  }
+  .before .badge { background: #fee2e2; color: #b91c1c; }
+  .after  .badge { background: #dcfce7; color: #15803d; }
+  .panel-header .title { font-size: 14px; font-weight: 700; color: #4b5563; }
+
+  /* Chat */
+  .chat { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); min-height: 480px; }
+  .msg { margin-bottom: 14px; }
+  .msg.user { display: flex; justify-content: flex-end; }
+  .msg.user .bubble {
+    background: #dbeafe; color: #1e3a8a; padding: 8px 14px; border-radius: 18px 18px 4px 18px;
+    font-size: 13px; max-width: 80%;
+  }
+  .msg.bot .bubble {
+    background: #f3f4f6; color: #1f1f1f; padding: 12px 14px; border-radius: 18px 18px 18px 4px;
+    font-size: 13px; line-height: 1.55;
+  }
+  .msg.bot .bubble.list ol { margin: 6px 0 0 18px; padding: 0; }
+  .msg.bot .bubble.list li { margin: 6px 0; }
+  .msg.bot .bubble.list ul { margin: 4px 0 0 16px; padding: 0; color: #6b7280; }
+
+  /* Card (the "after" widget) */
+  .widget {
+    background: white;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border: 1px solid #e5e7eb;
+    margin-top: 8px;
+    width: 100%;
+    max-width: 320px;
+  }
+  .widget .hero {
+    height: 110px;
+    background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 50px;
+  }
+  .widget .body { padding: 14px 16px 18px; }
+  .widget h3 { margin: 0 0 4px 0; font-size: 18px; }
+  .widget .cuisine { color: #6b7280; font-size: 13px; margin: 0 0 10px 0; }
+  .widget .pills { display: flex; gap: 6px; margin-bottom: 12px; }
+  .widget .pill {
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 700;
+  }
+  .widget .pill.rating { background: #dcfce7; color: #15803d; }
+  .widget .pill.eta    { background: #fef3c7; color: #b45309; }
+  .widget .pill.price  { background: #ede9fe; color: #5b21b6; }
+  .widget .cta {
+    display: block; width: 100%; padding: 10px;
+    background: #fc8019; color: white; border: 0; border-radius: 8px;
+    font-weight: 700; font-size: 14px; cursor: pointer;
+  }
+
+  /* Captions */
+  .caption { margin-top: 16px; font-size: 14px; font-weight: 600; padding: 10px 14px; border-radius: 10px; }
+  .panel.before .caption { background: #fee2e2; color: #b91c1c; }
+  .panel.after  .caption { background: #dcfce7; color: #15803d; }
+
+  .footer { text-align: center; margin-top: 28px; color: #6b7280; font-size: 12px; }
+  .footer a { color: #2563eb; text-decoration: none; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="header">
+      <h1>MCP-UI: Before vs After</h1>
+      <p>What changes when an AI tool returns a real widget</p>
+    </div>
+
+    <div class="grid">
+      <!-- BEFORE -->
+      <div class="panel before">
+        <div class="panel-header">
+          <span class="badge">BEFORE</span>
+          <span class="title">Text response</span>
+        </div>
+        <div class="chat">
+          <div class="msg user"><div class="bubble">show me restaurants near me</div></div>
+          <div class="msg bot">
+            <div class="bubble list">
+              Here are some restaurants near you:
+              <ol>
+                <li><b>Pizza Paradiso</b> (Italian) — ★ 4.5 / 25 min / $$
+                  <ul>
+                    <li>Margherita Pizza ($12.99)</li>
+                    <li>Pepperoni Pizza ($14.99)</li>
+                    <li>Garlic Bread ($5.99)</li>
+                  </ul>
+                </li>
+                <li><b>Sushi Zen</b> (Japanese) — ★ 4.8 / 35 min / $$$
+                  <ul>
+                    <li>Salmon Nigiri ($8.99)</li>
+                    <li>Dragon Roll ($16.99)</li>
+                  </ul>
+                </li>
+                <li><b>Curry House</b> (Indian) — ★ 4.6 / 30 min / $
+                  <ul>
+                    <li>Butter Chicken ($13.99)</li>
+                  </ul>
+                </li>
+              </ol>
+              <em>Which one would you like to order from, and which items?</em>
+            </div>
+          </div>
+        </div>
+        <div class="caption">Wall of markdown.&nbsp; Slow to scan.&nbsp; Can&rsquo;t tap.</div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="panel after">
+        <div class="panel-header">
+          <span class="badge">AFTER</span>
+          <span class="title">Rendered widget</span>
+        </div>
+        <div class="chat">
+          <div class="msg user"><div class="bubble">show me restaurants near me</div></div>
+          <div class="msg bot">
+            <div class="widget">
+              <div class="hero">🍕</div>
+              <div class="body">
+                <h3>Pizza Paradiso</h3>
+                <p class="cuisine">Italian cuisine</p>
+                <div class="pills">
+                  <span class="pill rating">★ 4.5</span>
+                  <span class="pill eta">⏱ 25 min</span>
+                  <span class="pill price">$$</span>
+                </div>
+                <button class="cta">Add to Cart</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="caption">Rendered widget.&nbsp; Instant scan.&nbsp; Tap to act.</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Demo: <a href="https://github.com/ayu5h-raj/mcp-ui-demo">github.com/ayu5h-raj/mcp-ui-demo</a>
+      &nbsp;·&nbsp;
+      MCP-UI: <a href="https://mcpui.dev">mcpui.dev</a>
+    </div>
+  </div>
+</body>
+</html>
