@@ -94,27 +94,72 @@
   .chat::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
   .chat::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
 
-  .msg { margin-bottom: 14px; animation: msgIn 0.32s cubic-bezier(0.2, 0.7, 0.3, 1.1); }
+  .msg { margin-bottom: 18px; animation: msgIn 0.32s cubic-bezier(0.2, 0.7, 0.3, 1.1); }
   @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-  .msg.user { display: flex; justify-content: flex-end; }
+  /* USER messages — right-aligned bubble */
+  .msg.user { display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px; }
   .msg.user .bubble {
-    background: #dbeafe; color: #1e3a8a; padding: 8px 14px;
-    border-radius: 18px 18px 4px 18px; font-size: 13px; max-width: 80%;
+    background: #2563eb; color: white; padding: 9px 14px;
+    border-radius: 18px 18px 4px 18px; font-size: 13.5px; max-width: 80%;
+    line-height: 1.45;
+  }
+  .msg.user .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #dbeafe; color: #1e40af;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* BOT messages — avatar + content column */
+  .msg.bot { display: flex; gap: 10px; align-items: flex-start; }
+  .msg.bot .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, #fc8019 0%, #f59e0b 100%);
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; letter-spacing: 0.5px;
+    flex-shrink: 0; margin-top: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  }
+  .msg.bot .content { flex: 1; min-width: 0; }
+  .msg.bot .sender {
+    font-size: 11px; font-weight: 700; color: #6b7280;
+    margin-bottom: 4px; letter-spacing: 0.3px;
   }
   .msg.bot .bubble {
-    background: #f3f4f6; color: #1f1f1f; padding: 12px 14px;
-    border-radius: 18px 18px 18px 4px; font-size: 13px; line-height: 1.55;
-    max-width: 90%;
+    background: #f3f4f6; color: #1f1f1f; padding: 10px 14px;
+    border-radius: 4px 14px 14px 14px; font-size: 13.5px; line-height: 1.55;
+    display: inline-block; max-width: 100%;
   }
   .msg.bot .bubble.list ol { margin: 6px 0 0 18px; padding: 0; }
   .msg.bot .bubble.list li { margin: 6px 0; }
   .msg.bot .bubble.list ul { margin: 4px 0 0 16px; padding: 0; color: #6b7280; }
-  .msg.bot.widget-msg .bubble { padding: 4px; background: transparent; }
 
-  .typing { color: #9ca3af; font-size: 13px; padding: 0 14px; margin-bottom: 14px; }
+  /* Widget messages — no bubble background, just the widget directly under the sender label */
+  .msg.bot.widget-msg .bubble {
+    background: transparent; padding: 0; border-radius: 0;
+  }
+
+  /* Typing indicator */
+  .typing {
+    display: flex; gap: 10px; align-items: center;
+    color: #9ca3af; font-size: 13px; margin-bottom: 18px;
+  }
+  .typing .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, #fc8019 0%, #f59e0b 100%);
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800;
+    flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  }
+  .typing .dots-host {
+    background: #f3f4f6; padding: 10px 14px;
+    border-radius: 4px 14px 14px 14px;
+  }
   .typing .dots span {
-    display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #9ca3af;
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #9ca3af;
     margin: 0 1px; animation: typing 1.2s infinite ease-in-out;
   }
   .typing .dots span:nth-child(2) { animation-delay: 0.15s; }
@@ -169,8 +214,8 @@
   .cart-card { padding: 16px 18px 16px; }
   .cart-card h3 { margin: 0 0 12px 0; font-size: 15px; display: flex; align-items: center; gap: 6px; }
   .cart-card .empty { text-align: center; color: #9ca3af; padding: 20px 0; }
-  .cart-card .row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 12px; }
-  .cart-card .row.subtotal {
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 12px; }
+  .row.subtotal {
     font-weight: 600; color: #6b7280; padding-top: 8px;
     border-top: 1px dashed #e5e7eb; margin-top: 4px;
   }
@@ -275,38 +320,46 @@
           </div>
         </div>
         <div class="chat" id="beforeChat">
-          <div class="msg user"><div class="bubble">show me restaurants near me</div></div>
+          <div class="msg user"><div class="bubble">show me restaurants near me</div><div class="avatar">YOU</div></div>
           <div class="msg bot">
-            <div class="bubble list">
-              Here are some restaurants near you:
-              <ol>
-                <li><b>Pizza Paradiso</b> (Italian) &mdash; ★ 4.5 / 25 min / $$
-                  <ul>
-                    <li>Margherita Pizza ($12.99)</li>
-                    <li>Pepperoni Pizza ($14.99)</li>
-                    <li>Garlic Bread ($5.99)</li>
-                  </ul>
-                </li>
-                <li><b>Sushi Zen</b> (Japanese) &mdash; ★ 4.8 / 35 min / $$$
-                  <ul>
-                    <li>Salmon Nigiri ($8.99)</li>
-                    <li>Dragon Roll ($16.99)</li>
-                  </ul>
-                </li>
-              </ol>
-              <em>Which one would you like to order from?</em>
+            <div class="avatar">C</div>
+            <div class="content">
+              <div class="sender">Claude</div>
+              <div class="bubble list">
+                Here are some restaurants near you:
+                <ol>
+                  <li><b>Pizza Paradiso</b> (Italian) &mdash; ★ 4.5 / 25 min / $$
+                    <ul>
+                      <li>Margherita Pizza ($12.99)</li>
+                      <li>Pepperoni Pizza ($14.99)</li>
+                      <li>Garlic Bread ($5.99)</li>
+                    </ul>
+                  </li>
+                  <li><b>Sushi Zen</b> (Japanese) &mdash; ★ 4.8 / 35 min / $$$
+                    <ul>
+                      <li>Salmon Nigiri ($8.99)</li>
+                      <li>Dragon Roll ($16.99)</li>
+                    </ul>
+                  </li>
+                </ol>
+                <em>Which one would you like to order from?</em>
+              </div>
             </div>
           </div>
-          <div class="msg user"><div class="bubble">Pizza Paradiso. I want a Margherita and a Pepperoni.</div></div>
+          <div class="msg user"><div class="bubble">Pizza Paradiso. I want a Margherita and a Pepperoni.</div><div class="avatar">YOU</div></div>
           <div class="msg bot">
-            <div class="bubble">
-              Got it. Margherita ($12.99) and Pepperoni ($14.99). That's $27.98. Should I place the order?
+            <div class="avatar">C</div>
+            <div class="content">
+              <div class="sender">Claude</div>
+              <div class="bubble">Got it. Margherita ($12.99) and Pepperoni ($14.99). That's $27.98. Should I place the order?</div>
             </div>
           </div>
-          <div class="msg user"><div class="bubble">yes</div></div>
+          <div class="msg user"><div class="bubble">yes</div><div class="avatar">YOU</div></div>
           <div class="msg bot">
-            <div class="bubble">
-              I can't actually place orders &mdash; I don't have integration with the restaurant. You'd need to use Swiggy / Zomato / their app directly.
+            <div class="avatar">C</div>
+            <div class="content">
+              <div class="sender">Claude</div>
+              <div class="bubble">I can't actually place orders &mdash; I don't have integration with the restaurant. You'd need to use Swiggy / Zomato / their app directly.</div>
             </div>
           </div>
         </div>
@@ -373,16 +426,16 @@
       removeSuggestions();
       const msg = document.createElement('div');
       msg.className = 'msg user';
-      msg.innerHTML = `<div class="bubble">${text}</div>`;
+      msg.innerHTML = `<div class="bubble">${text}</div><div class="avatar">YOU</div>`;
       chat().appendChild(msg);
       scrollToBottom();
     }
 
     async function addBotMsg(htmlOrWidget, opts = {}) {
-      // Show typing indicator briefly
+      // Typing indicator with avatar
       const typing = document.createElement('div');
       typing.className = 'typing';
-      typing.innerHTML = `Claude <span class="dots"><span></span><span></span><span></span></span>`;
+      typing.innerHTML = `<div class="avatar">C</div><div class="dots-host"><span class="dots"><span></span><span></span><span></span></span></div>`;
       chat().appendChild(typing);
       scrollToBottom();
       await sleep(opts.delay ?? 600);
@@ -390,7 +443,7 @@
 
       const msg = document.createElement('div');
       msg.className = 'msg bot' + (opts.widget ? ' widget-msg' : '');
-      msg.innerHTML = `<div class="bubble">${htmlOrWidget}</div>`;
+      msg.innerHTML = `<div class="avatar">C</div><div class="content"><div class="sender">Claude</div><div class="bubble">${htmlOrWidget}</div></div>`;
       chat().appendChild(msg);
       scrollToBottom();
       return msg;
@@ -568,7 +621,7 @@
           <h3>Order placed!</h3>
           <p class="conf">Confirmation</p>
           <div class="order-id">${id}</div>
-          <div class="row" style="text-align:left;justify-content:space-between"><span>${cart.length} item${cart.length===1?'':'s'} from ${RESTAURANT_NAME}</span><span>$${total.toFixed(2)}</span></div>
+          <div class="row" style="margin-top:6px"><span>${cart.length} item${cart.length===1?'':'s'} &middot; ${RESTAURANT_NAME}</span><span>$${total.toFixed(2)}</span></div>
           <div class="eta-row">⏱ Estimated delivery: 25 minutes</div>
         </div>`;
       await addBotMsg(receiptHTML, { widget: true });
