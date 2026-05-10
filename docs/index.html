@@ -101,8 +101,10 @@
   .msg.user { display: flex; justify-content: flex-end; align-items: flex-end; gap: 8px; }
   .msg.user .bubble {
     background: #2563eb; color: white; padding: 9px 14px;
-    border-radius: 18px 18px 4px 18px; font-size: 13.5px; max-width: 80%;
+    border-radius: 18px 18px 4px 18px; font-size: 13.5px;
+    max-width: calc(100% - 40px);
     line-height: 1.45;
+    word-wrap: break-word; overflow-wrap: break-word;
   }
   .msg.user .avatar {
     width: 28px; height: 28px; border-radius: 50%;
@@ -289,6 +291,75 @@
   .footer a:hover { text-decoration: underline; }
   .footer .links-row { margin-bottom: 8px; }
   .footer .meta { font-size: 12px; color: #9ca3af; max-width: 700px; margin: 0 auto; line-height: 1.5; }
+
+  /* ── Mobile (≤ 640px) ─────────────────────────────────────────────── */
+  @media (max-width: 640px) {
+    body { padding: 16px 10px 36px; }
+
+    .topnav { margin-bottom: 18px; gap: 8px; }
+    .topnav .brand { font-size: 13px; gap: 6px; }
+    .topnav .links { gap: 12px; font-size: 12px; }
+
+    .header { margin-bottom: 22px; padding: 0 4px; }
+    .header h1 { line-height: 1.2; }
+    .header p { font-size: 14px; }
+    .header .hint { font-size: 12px; padding: 5px 12px; line-height: 1.4; }
+
+    .stage { padding: 14px; border-radius: 18px; }
+    .grid { gap: 14px; }
+
+    .panel { padding: 14px; border-radius: 14px; }
+    .panel-header { margin-bottom: 10px; }
+    .panel-header .title { font-size: 12px; }
+    .reset-btn { font-size: 11px; padding: 5px 10px; }
+
+    .chat { padding: 12px; min-height: 0; }
+    /* BEFORE panel: shorter, scrollable — reduce vertical real estate */
+    .panel.before .chat { min-height: 260px; max-height: 320px; }
+    /* AFTER panel: where the action happens — reasonable height for phone */
+    .panel.after  .chat { min-height: 460px; max-height: 70vh; }
+
+    .msg { margin-bottom: 14px; }
+    .msg.user .bubble,
+    .msg.bot .bubble { font-size: 13px; }
+    .msg.user .bubble { max-width: calc(100% - 40px); }
+    .msg.bot .avatar, .msg.user .avatar, .typing .avatar { width: 26px; height: 26px; font-size: 10px; }
+
+    /* Widgets: drop the 320px floor so they hug the chat width */
+    .widget, .form-card, .cart-card, .receipt-card { width: 100%; max-width: 100%; }
+    .widget .hero { height: 84px; font-size: 38px; }
+    .widget .body { padding: 12px 14px 14px; }
+    .widget h3 { font-size: 16px; }
+
+    .form-card { padding: 14px 16px; }
+    .form-card .item { padding: 7px 0; }
+    .form-card .item .label { font-size: 12.5px; }
+
+    .cart-card { padding: 14px 16px; }
+    .receipt-card { padding: 16px; }
+    .receipt-card .icon { font-size: 36px; }
+    .receipt-card h3 { font-size: 16px; }
+
+    .btn-primary { padding: 11px; font-size: 13.5px; }
+
+    .suggestions { padding: 8px 4px 0; gap: 5px; }
+    .suggestion { font-size: 11.5px; padding: 6px 10px; }
+
+    .caption { font-size: 13px; padding: 9px 12px; }
+
+    /* Toast: top-anchored on phones so it doesn't cover the form mid-interaction */
+    .toast-host {
+      bottom: auto; top: 12px;
+      transform: translateX(-50%) translateY(-160px);
+      padding: 10px 14px; font-size: 12px;
+      max-width: calc(100vw - 20px);
+    }
+    .toast-host.show { transform: translateX(-50%) translateY(0); }
+    .toast-host .label { font-size: 10px; margin-bottom: 4px; }
+
+    .footer { margin-top: 22px; font-size: 12px; padding: 0 8px; }
+    .footer .meta { font-size: 11.5px; }
+  }
 </style>
 </head>
 <body>
@@ -499,7 +570,7 @@
           </div>
         </div>`;
       await addBotMsg(cardHTML, { widget: true, delay: 350 });
-      showToast('show_restaurant_card({ restaurantId: "r1" })');
+      // No initial toast — toast is click feedback, not a page-load artifact
     }
 
     async function step1_viewMenu() {
