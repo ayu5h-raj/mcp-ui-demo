@@ -92,7 +92,21 @@
     display: block; width: 100%; padding: 10px;
     background: #fc8019; color: white; border: 0; border-radius: 8px;
     font-weight: 700; font-size: 14px; cursor: pointer;
+    transition: background 0.15s, transform 0.05s;
   }
+  .widget .cta:hover { background: #e06d10; }
+  .widget .cta:active { transform: scale(0.98); }
+  .widget .cta.added { background: #22c55e; cursor: default; }
+  .widget .cta.added:hover { background: #22c55e; }
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(120px);
+    background: #1f1f1f; color: white; padding: 12px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease;
+    z-index: 100;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast code { background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
 
   /* Captions */
   .caption { margin-top: 16px; font-size: 14px; font-weight: 600; padding: 10px 14px; border-radius: 10px; }
@@ -168,7 +182,7 @@
                   <span class="pill eta">⏱ 25 min</span>
                   <span class="pill price">$$</span>
                 </div>
-                <button class="cta">Add to Cart</button>
+                <button class="cta" id="ctaBtn" onclick="onAddToCart(this)">Add to Cart</button>
               </div>
             </div>
           </div>
@@ -183,5 +197,26 @@
       MCP-UI: <a href="https://mcpui.dev">mcpui.dev</a>
     </div>
   </div>
+
+  <div class="toast" id="toast">
+    Pattern B: iframe called <code>add_to_cart(r1, [Margherita])</code> — server cart updated, no LLM round-trip.
+  </div>
+
+  <script>
+    function onAddToCart(btn) {
+      if (btn.classList.contains('added')) return;
+      btn.classList.add('added');
+      btn.textContent = 'Added ✓';
+      const t = document.getElementById('toast');
+      t.classList.add('show');
+      setTimeout(() => {
+        t.classList.remove('show');
+      }, 2400);
+      setTimeout(() => {
+        btn.classList.remove('added');
+        btn.textContent = 'Add to Cart';
+      }, 2800);
+    }
+  </script>
 </body>
 </html>
